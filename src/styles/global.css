@@ -1,0 +1,12 @@
+@import "../../node_modules/tailwindcss";
+
+body {
+  @apply bg-gray-900 text-gray-100; /* Example from before, still works */
+  font-family: 'Inter', 'Arial', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.custom-card {
+  @apply bg-gray-800 p-6 rounded-lg shadow-xl;
+}
