@@ -1,12 +1,25 @@
-@import "../../node_modules/tailwindcss";
+/* src/styles/global.css */
+@import "tailwindcss";
+
+html {
+  height: 100%;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
 
 body {
-  @apply bg-gray-900 text-gray-100; /* Example from before, still works */
-  font-family: 'Inter', 'Arial', sans-serif;
+  @apply bg-gray-900 text-gray-100; /* YOUR THEME VIA TAILWIND */
+  font-family: 'Inter', 'Arial', sans-serif; /* Or your preferred from :root */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
 
-.custom-card {
-  @apply bg-gray-800 p-6 rounded-lg shadow-xl;
+  min-height: 100vh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
 }
+/* #root styling usually not needed if App.jsx handles its own layout with min-h-screen, w-full */
