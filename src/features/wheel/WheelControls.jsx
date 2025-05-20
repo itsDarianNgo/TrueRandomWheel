@@ -2,27 +2,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-// --- SVG Icon Components ---
-const IconArrowUp = ({ className = "w-5 h-5" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5M5 12l7-7 7 7" />
-    </svg>
-);
-const IconArrowRight = ({ className = "w-5 h-5" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-    </svg>
-);
-const IconArrowDown = ({ className = "w-5 h-5" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M19 12l-7 7-7-7" />
-    </svg>
-);
-const IconArrowLeft = ({ className = "w-5 h-5" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h15" />
-    </svg>
-);
+// --- SVG Icon Components (Unchanged from Response #36, needed for cycle button) ---
+const IconArrowUp = ({ className = "w-5 h-5" }) => ( <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"> <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5M5 12l7-7 7 7" /> </svg> );
+const IconArrowRight = ({ className = "w-5 h-5" }) => ( <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"> <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /> </svg> );
+const IconArrowDown = ({ className = "w-5 h-5" }) => ( <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"> <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M19 12l-7 7-7-7" /> </svg> );
+const IconArrowLeft = ({ className = "w-5 h-5" }) => ( <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"> <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h15" /> </svg> );
 
 const pointerIconsMap = {
     top: { IconComponent: IconArrowUp, label: "Top" },
@@ -37,14 +21,16 @@ const WheelControls = ({
                            onSpinClick,
                            isSpinning,
                            canSpin,
-                           currentPointerPosition,
-                           onPointerPositionChange,
-                           availablePointerPositions = ['top', 'right', 'bottom', 'left'],
+                           currentPointerPosition, // Still needed to display current on cycle button
+                           onCyclePointerPosition, // New prop for cycling
+                           // onPointerPositionChange prop is removed as the full selector is moved
                        }) => {
 
+    const currentPointerInfo = pointerIconsMap[currentPointerPosition] || pointerIconsMap.top;
+
     return (
-        <div className="flex flex-col items-center space-y-6 p-6 bg-slate-800 rounded-xl shadow-2xl w-full max-w-md"> {/* Reduced space-y from 8 to 6 */}
-            {/* Spin Button (Styling Unchanged from #24 - already quite polished) */}
+        <div className="flex flex-col items-center space-y-4 p-6 bg-slate-800 rounded-xl shadow-2xl w-full max-w-md"> {/* Adjusted space-y */}
+            {/* Spin Button (Unchanged) */}
             <button
                 type="button"
                 onClick={onSpinClick}
@@ -55,55 +41,18 @@ const WheelControls = ({
                 {isSpinning ? 'Spinning...' : 'SPIN!'}
             </button>
 
-            {/* Pointer Position Selector - Segmented Control Styling */}
+            {/* New Cycle Pointer Position Button */}
             <div className="w-full">
-                <label
-                    htmlFor="pointer-position-group" // This ID is for the group, not an input
-                    className="block text-sm font-medium text-slate-300 mb-2 text-center"
-                    id="pointer-position-group-label" // Added ID for aria-labelledby
+                <p className="text-xs text-slate-400 mb-1 text-center uppercase tracking-wider">Pointer</p>
+                <button
+                    type="button"
+                    onClick={onCyclePointerPosition}
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors duration-150 ease-in-out"
+                    aria-label={`Cycle pointer position, current: ${currentPointerInfo.label}`}
                 >
-                    Pointer Position
-                </label>
-                <div
-                    role="group"
-                    aria-labelledby="pointer-position-group-label" // Use the label's ID
-                    className="flex w-full rounded-lg shadow-sm border border-slate-600 overflow-hidden" // Container for segmented control
-                >
-                    {availablePointerPositions.map((position, index) => {
-                        const isActive = currentPointerPosition === position;
-                        const { IconComponent, label } = pointerIconsMap[position] || { IconComponent: () => '?', label: position };
-
-                        // Conditional classes for border radius to make segments connect
-                        let segmentClasses = "";
-                        if (index === 0) segmentClasses += "rounded-l-md ";
-                        if (index === availablePointerPositions.length - 1) segmentClasses += "rounded-r-md ";
-                        // Add right border to all but the last segment
-                        if (index < availablePointerPositions.length - 1) segmentClasses += "border-r border-slate-500 ";
-
-
-                        return (
-                            <button
-                                key={position}
-                                type="button"
-                                onClick={() => onPointerPositionChange(position)}
-                                className={`
-                  flex-1 flex flex-col items-center justify-center p-3 transition-colors duration-150 ease-in-out
-                  focus:outline-none focus:z-10 focus:ring-2 focus:ring-offset-0 focus:ring-sky-400 
-                  ${segmentClasses}
-                  ${isActive
-                                    ? 'bg-sky-600 text-white shadow-inner' // Active state styling
-                                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600' // Inactive state
-                                }
-                `}
-                                aria-pressed={isActive}
-                                aria-label={`Set pointer to ${label}`}
-                            >
-                                <IconComponent className={`w-5 h-5 mb-1 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`} />
-                                <span className="text-xs font-semibold">{label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
+                    <currentPointerInfo.IconComponent className="w-5 h-5 text-sky-400" />
+                    <span className="font-medium">{currentPointerInfo.label}</span>
+                </button>
             </div>
         </div>
     );
@@ -114,8 +63,7 @@ WheelControls.propTypes = {
     isSpinning: PropTypes.bool.isRequired,
     canSpin: PropTypes.bool.isRequired,
     currentPointerPosition: PropTypes.string.isRequired,
-    onPointerPositionChange: PropTypes.func.isRequired,
-    availablePointerPositions: PropTypes.arrayOf(PropTypes.string),
+    onCyclePointerPosition: PropTypes.func.isRequired, // New prop
 };
 
 export default WheelControls;
