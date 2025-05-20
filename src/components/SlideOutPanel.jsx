@@ -2,15 +2,14 @@
 import React, { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 
-const IconClose = ({ className = "w-6 h-6" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-    </svg>
-);
+// IconClose is no longer needed by this component directly if the button is removed.
+// However, it might be used by the parent (WheelDisplay) for its toggle button.
+// For cleanliness here, we can remove it if not used.
+// const IconClose = ({ className = "w-6 h-6" }) => ( ... );
 
 const SlideOutPanel = ({
                            isOpen,
-                           onClose,
+                           onClose, // Still needed for Esc key and potential future overlay click
                            position = 'right',
                            title,
                            children,
@@ -47,34 +46,26 @@ const SlideOutPanel = ({
             ref={panelRef}
             className={`${basePanelClasses} ${positionClasses}`}
             aria-hidden={!isOpen}
+            // Consider role="region" or "complementary" if it's not acting like a modal dialog
+            // aria-labelledby={title ? "slide-panel-title" : undefined}
         >
-            {/* Panel Header: Close button position adjusted */}
-            <div className={`flex items-center p-4 border-b border-slate-700 flex-shrink-0 ${title ? 'justify-between' : (position === 'right' ? 'justify-start' : 'justify-end')}`}>
-                {position === 'left' && !title && <span />} {/* Spacer for left panel, no title, to push X right */}
+            {/* Panel Header: Internal Close Button REMOVED */}
+            <div className={`flex items-center p-4 border-b border-slate-700 flex-shrink-0 ${title ? (position === 'right' ? 'justify-start' : 'justify-end') : 'h-14' /* Ensure header has height even without title/button */}`}>
                 {title && (
-                    <h3 id="slide-panel-title" className={`text-lg font-semibold text-sky-400 ${position === 'left' ? 'order-2' : ''}`}>
+                    <h3 id="slide-panel-title" className="text-lg font-semibold text-sky-400 truncate w-full text-center sm:text-left"> {/* Allow title to take full width and center/left align */}
                         {title}
                     </h3>
                 )}
-                {/* If no title & panel is from right, button goes left. If title, button still goes opposite of title. */}
-                <button
-                    onClick={onClose}
-                    className={`p-1.5 text-slate-400 hover:text-sky-400 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors ${position === 'right' ? (title ? 'ml-auto' : '') : (title ? 'mr-auto order-1' : '') }`}
-                    aria-label="Close panel"
-                >
-                    <IconClose />
-                </button>
-                {position === 'right' && !title && <span />} {/* Spacer for right panel, no title, to push X left */}
             </div>
 
-            <div className="flex-grow p-6 overflow-y-auto">
+            <div className="flex-grow p-4 sm:p-6 overflow-y-auto"> {/* Standardized padding */}
                 {children}
             </div>
         </div>
     );
 };
 
-SlideOutPanel.propTypes = { /* ... Unchanged ... */
+SlideOutPanel.propTypes = {
     isOpen: PropTypes.bool.isRequired,
     onClose: PropTypes.func.isRequired,
     position: PropTypes.oneOf(['left', 'right']),
