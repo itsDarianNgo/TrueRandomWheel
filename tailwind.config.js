@@ -11,6 +11,7 @@ export default {
       animation: {
         'spin-celebrate': 'spin-celebrate 0.5s ease-out forwards',
         'fade-in': 'fadeIn 0.3s ease-out forwards',
+        'slideInUp': 'slideInUp 0.3s ease-out forwards',
       },
       keyframes: {
         'spin-celebrate': {
@@ -21,6 +22,10 @@ export default {
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
+        },
+        slideInUp: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         }
       }
     },
