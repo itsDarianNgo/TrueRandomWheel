@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectHistoryEntries, clearHistory as clearHistoryAction } from './historySlice'; // Renamed import for clarity
 import { formatRelativeTime } from '../../core/utils/timeUtils';
-import Modal from '../../components/Modal';
+import Modal from '../../components/common/Modal.jsx';
 // Button component can be imported if specific styling is desired beyond Tailwind classes on <button>
 // import Button from '../../components/Button';
 

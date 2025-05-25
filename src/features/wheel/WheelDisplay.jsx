@@ -2,10 +2,10 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useDispatch } from 'react-redux'; // Added for Redux
 import WheelCanvas from './WheelCanvas';
-import SlideOutPanel from '../../components/SlideOutPanel';
+import SlideOutPanel from '../../components/common/SlideOutPanel.jsx';
 import SettingsPanelContent from './SettingsPanelContent';
 import PRNG from '../../core/prng/PRNGModule'; // Assuming this path is correct
-import Modal from '../../components/Modal';
+import Modal from '../../components/common/Modal.jsx';
 import { addHistoryEntry } from '../history/historySlice'; // Added for Redux, adjust path as needed
 
 // SVG Icon Components (assuming these are small and specific enough to keep here, or move to a shared icons file)
