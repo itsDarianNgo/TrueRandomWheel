@@ -6,8 +6,6 @@
 
 // "use strict"; // Not strictly necessary in ES6 modules, as they are implicitly in strict mode.
 
-import process from "prop-types/prop-types.js";
-
 const U64_MASK = (1n << 64n) - 1n;
 let S_STATE = [0n, 0n, 0n, 0n];
 
@@ -121,7 +119,7 @@ api._setState_FOR_TESTING_ONLY = function(newState) {
     // Check for test environment (important for ES modules where 'process' might not be global by default)
     // For simplicity in a browser-focused module, this check might be relaxed or adapted.
     // Let's assume a global `process` might be polyfilled or available in test runners like Jest.
-    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'development') {
+    if (import.meta.env.MODE !== 'test' && import.meta.env.MODE !== 'development') {
         console.error("PRNGModule._setState_FOR_TESTING_ONLY called outside test/dev environment. Operation aborted.");
         return;
     }
