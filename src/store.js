@@ -1,15 +1,13 @@
 // src/store.js
 import { configureStore } from '@reduxjs/toolkit';
 import historyReducer from './features/history/historySlice';
-// import itemReducer from './features/itemManagement/itemSlice'; // Future: Uncomment when itemSlice is implemented
-// import wheelReducer from './features/wheel/wheelSlice';   // Future: Uncomment when wheelSlice is implemented
+import settingsReducer from './features/settings/settingsSlice'; // New import
 
 export const store = configureStore({
     reducer: {
         history: historyReducer,
-        // items: itemReducer, // Future
-        // wheel: wheelReducer,   // Future
+        settings: settingsReducer, // Add settings reducer
+        // items: itemReducer, // Future: Uncomment when itemSlice is implemented
+        // wheel: wheelReducer,   // Future: Uncomment when wheelSlice is implemented
     },
-    // enhancers: (defaultEnhancers) => defaultEnhancers.concat(...) // If you need custom enhancers
-    // middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(...) // If you need custom middleware
 });
