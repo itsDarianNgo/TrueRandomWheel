@@ -114,6 +114,17 @@ api.shuffleArray = function(array) {
     }
 };
 
+// ***** NEW UTILITY *****
+api.selectRandomItemFromArray = function(array) {
+    if (!array || array.length === 0) {
+        console.warn("PRNGModule.selectRandomItemFromArray: Called with empty or invalid array.");
+        return null;
+    }
+    const randomIndexBigInt = api.nextRandomIntInRange(BigInt(array.length));
+    return array[Number(randomIndexBigInt)];
+};
+// ***** END NEW UTILITY *****
+
 // _setState_FOR_TESTING_ONLY is still a method on the 'api' object
 api._setState_FOR_TESTING_ONLY = function(newState) {
     // Check for test environment (important for ES modules where 'process' might not be global by default)
