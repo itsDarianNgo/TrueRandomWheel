@@ -50,16 +50,15 @@ export const spinWheelThunk = createAsyncThunk(
 
         dispatch(wheelSlice.actions.setTargetWinningItem(winningItemFromPRNG));
         dispatch(wheelSlice.actions.setWheelStatus('spinning'));
-        return { success: true, target: winningItemFromPRNG.name }; // Indicate success
+        return { success: true, targetName: winningItemFromPRNG.name }; // Return a serializable object
     }
 );
 
+// MODIFIED finalizeSpinThunk
 export const finalizeSpinThunk = createAsyncThunk(
     'wheel/finalizeSpin',
     async (payload, { dispatch, getState }) => {
-        // payload: { confirmedLandedItem, errorInfo }
         const { confirmedLandedItem, errorInfo } = payload;
-        const targetItem = getState().wheel.targetWinningItem;
 
         if (errorInfo) {
             console.error("finalizeSpinThunk: Error from WheelCanvas -", errorInfo.error);
@@ -68,33 +67,63 @@ export const finalizeSpinThunk = createAsyncThunk(
             return { error: errorInfo.error };
         }
 
-        if (!confirmedLandedItem || (targetItem && confirmedLandedItem.id !== targetItem.id)) {
-            console.error("finalizeSpinThunk: Landed item mismatch or not found. Target:", targetItem, "Landed:", confirmedLandedItem);
+        const targetItem = getState().wheel.targetWinningItem;
+        if (!confirmedLandedItem) {
+            console.error("finalizeSpinThunk: No landed item reported by canvas.");
             dispatch(wheelSlice.actions.setWheelStatus('idle'));
             dispatch(wheelSlice.actions.clearWinningItemDetails());
-            return { error: "Landed item did not match target." };
+            return { error: "No landed item reported." };
         }
 
-        dispatch(wheelSlice.actions.setWinningItemDetails(confirmedLandedItem));
-        dispatch(addHistoryEntry({ name: confirmedLandedItem.name, color: confirmedLandedItem.color }));
+        if (targetItem && confirmedLandedItem.id !== targetItem.id) {
+            console.warn("finalizeSpinThunk: Landed item ID does not match target ID. Target:", targetItem.id, "Landed:", confirmedLandedItem.id, ". Trusting landed item.");
+            // Potentially log this for analytics or deeper debugging if it happens often
+        }
+
+        dispatch(wheelSlice.actions.setWinningItemDetails(confirmedLandedItem)); // This is the "pending" winner
         dispatch(wheelSlice.actions.setDisplayWinningBanner(true));
         dispatch(wheelSlice.actions.setWheelStatus('prize_landing'));
-        return { success: true, winner: confirmedLandedItem.name };
+        return { success: true, pendingWinnerName: confirmedLandedItem.name };
     }
 );
 
-export const acknowledgeWinnerThunk = createAsyncThunk(
-    'wheel/acknowledgeWinner',
+// NEW confirmWinningSpinThunk
+export const confirmWinningSpinThunk = createAsyncThunk(
+    'wheel/confirmWinningSpin',
     async (_, { dispatch, getState }) => {
-        dispatch(wheelSlice.actions.setDisplayWinningBanner(false));
-        const { removeOnHit, winningItemDetails: currentWinner } = getState().wheel;
+        const { winningItemDetails: currentWinner, removeOnHit } = getState().wheel;
 
-        if (removeOnHit && currentWinner && currentWinner.id) {
+        if (!currentWinner) {
+            console.error("confirmWinningSpinThunk: No current winner details found to confirm.");
+            dispatch(wheelSlice.actions.setDisplayWinningBanner(false));
+            dispatch(wheelSlice.actions.setWheelStatus('idle'));
+            return { error: "No winner to confirm." };
+        }
+
+        dispatch(addHistoryEntry({ name: currentWinner.name, color: currentWinner.color }));
+
+        if (removeOnHit && currentWinner.id) {
             dispatch(removeItemInstanceAction(currentWinner.id)); // Dispatch action from itemSlice
         }
+
+        dispatch(wheelSlice.actions.setDisplayWinningBanner(false));
         dispatch(wheelSlice.actions.clearWinningItemDetails());
         dispatch(wheelSlice.actions.setWheelStatus('idle'));
-        return { success: true };
+        return { success: true, confirmedWinnerName: currentWinner.name };
+    }
+);
+
+// NEW voidLastSpinThunk
+export const voidLastSpinThunk = createAsyncThunk(
+    'wheel/voidLastSpin',
+    async (_, { dispatch, getState }) => {
+        const { winningItemDetails: currentWinner } = getState().wheel; // Get winner to log if needed
+
+        dispatch(wheelSlice.actions.setDisplayWinningBanner(false));
+        dispatch(wheelSlice.actions.clearWinningItemDetails());
+        dispatch(wheelSlice.actions.setWheelStatus('idle'));
+        // No history entry, no item removal.
+        return { success: true, voidedItemName: currentWinner ? currentWinner.name : null };
     }
 );
 
@@ -165,19 +194,7 @@ const wheelSlice = createSlice({
         },
 
     },
-    extraReducers: (builder) => { // To handle thunk lifecycle if needed (e.g., pending, rejected)
-        builder
-            .addCase(spinWheelThunk.rejected, (state, action) => {
-                console.error("spinWheelThunk rejected:", action.error.message);
-                state.wheelStatus = 'idle'; // Ensure idle on failure
-            })
-            .addCase(finalizeSpinThunk.rejected, (state, action) => {
-                console.error("finalizeSpinThunk rejected:", action.error.message);
-                state.wheelStatus = 'idle';
-            })
-            .addCase(performShuffleThunk.rejected, (state, action) => {
-                console.error("performShuffleThunk rejected:", action.error.message);
-                state.wheelStatus = 'idle';
+    extraReducers: (builder) => { /* ... same as Response #30, can add handlers for new thunks if needed ... */ builder .addCase(spinWheelThunk.rejected, (state, action) => { console.error("spinWheelThunk rejected:", action.error ? action.error.message : 'Unknown error'); state.wheelStatus = 'idle'; }) .addCase(finalizeSpinThunk.rejected, (state, action) => { console.error("finalizeSpinThunk rejected:", action.error ? action.error.message : 'Unknown error'); state.wheelStatus = 'idle'; }) .addCase(performShuffleThunk.rejected, (state, action) => { console.error("performShuffleThunk rejected:", action.error ? action.error.message : 'Unknown error'); state.wheelStatus = 'idle'; }) .addCase(confirmWinningSpinThunk.rejected, (state, action) => { console.error("confirmWinningSpinThunk rejected:", action.error ? action.error.message : 'Unknown error'); state.wheelStatus = 'idle'; // Ensure idle state on unexpected failure }) .addCase(voidLastSpinThunk.rejected, (state, action) => { console.error("voidLastSpinThunk rejected:", action.error ? action.error.message : 'Unknown error'); state.wheelStatus = 'idle'; }); }
             });
         // Can add .pending or .fulfilled handlers if specific state changes are needed during thunk lifecycle
     }

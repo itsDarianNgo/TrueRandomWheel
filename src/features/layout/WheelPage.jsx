@@ -6,7 +6,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import { selectAllItems } from '../items/itemSlice';
 import {
     selectWheelStatus, selectWinningItemDetails,
-    selectDisplayWinningBanner, acknowledgeWinnerThunk, performShuffleThunk, selectPageBackgroundImageUrl,
+    selectDisplayWinningBanner, performShuffleThunk, selectPageBackgroundImageUrl,
+    confirmWinningSpinThunk, voidLastSpinThunk,
+    selectRemoveOnHit
 } from '../wheel/wheelSlice';
 
 // Components
@@ -28,6 +30,7 @@ const WheelPage = () => {
     const winningItemDetails = useSelector(selectWinningItemDetails);
     const displayWinningBanner = useSelector(selectDisplayWinningBanner);
     const pageBackgroundImageUrl = useSelector(selectPageBackgroundImageUrl); // New
+    const removeOnHitActive = useSelector(selectRemoveOnHit); // Added for modal text
 
     // State for settings panel visibility is managed here
     const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
@@ -74,29 +77,20 @@ const WheelPage = () => {
         }
     }, [pageBackgroundImageUrl]);
 
-    // Callback to close the winning banner (dispatches acknowledgeWinnerThunk)
-    const handleCloseWinningBanner = useCallback(() => {
-        dispatch(acknowledgeWinnerThunk());
+    // NEW MODAL ACTION HANDLERS
+    const handleConfirmWin = useCallback(() => {
+        dispatch(confirmWinningSpinThunk());
     }, [dispatch]);
 
-    // Callback for quick shuffle button (dispatches performShuffleThunk)
-    const handleQuickShuffle = useCallback(() => {
-        if (overallIsBusy || items.length < 2) return;
-        dispatch(performShuffleThunk({ shuffleType: 'quick' }));
-    }, [dispatch, overallIsBusy, items.length]);
+    const handleVoidSpin = useCallback(() => {
+        dispatch(voidLastSpinThunk());
+    }, [dispatch]);
 
-    // Callback for "Shuffle N Times" (passed to SettingsPanelContent via orchestrator)
-    const handleShuffleNTimes = useCallback(() => {
-        if (overallIsBusy || items.length < 2) return;
-        dispatch(performShuffleThunk({ shuffleType: 'N_times' }));
-    }, [dispatch, overallIsBusy, items.length]);
+    // Shuffle and Panel Toggle Callbacks (same as Response #30)
+    const handleQuickShuffle = useCallback(() => { if (overallIsBusy || items.length < 2) return; dispatch(performShuffleThunk({ shuffleType: 'quick' })); }, [dispatch, overallIsBusy, items.length]);
+    const handleShuffleNTimes = useCallback(() => { if (overallIsBusy || items.length < 2) return; dispatch(performShuffleThunk({ shuffleType: 'N_times' })); }, [dispatch, overallIsBusy, items.length]);
+    const toggleSettingsPanel = useCallback(() => { if (overallIsBusy && !isSettingsPanelOpen) return; setIsSettingsPanelOpen(prev => !prev); }, [overallIsBusy, isSettingsPanelOpen]);
 
-    // Toggles the settings panel visibility
-    const toggleSettingsPanel = useCallback(() => {
-        if (overallIsBusy && !isSettingsPanelOpen) return; // Prevent opening if busy
-        // Allow closing even if busy
-        setIsSettingsPanelOpen(prev => !prev);
-    }, [overallIsBusy, isSettingsPanelOpen]); // Added isSettingsPanelOpen to dependency for correct logic
 
     const visualWheelScale = isSettingsPanelOpen ? WHEEL_SCALE_WHEN_PANEL_OPEN : 1;
     const wheelTranslateXVal = isSettingsPanelOpen ? -WHEEL_SECTION_TRANSLATE_X_OFFSET : 0;
@@ -115,22 +109,50 @@ const WheelPage = () => {
                 {isSettingsPanelOpen ? <IconClosePanel className="w-6 h-6"/> : <IconSettings className="w-6 h-6"/>}
             </button>
 
-            {/* Winning Banner Modal (remains the same) */}
+            {/* MODIFIED Winning Banner Modal */}
             {winningItemDetails && displayWinningBanner && (
                 <Modal
                     isOpen={displayWinningBanner}
-                    onClose={handleCloseWinningBanner}
-                    title="Congratulations!"
+                    onClose={handleConfirmWin} // Default close action is to confirm the win
+                    title="Spin Result!" // Title changed slightly
                     size="md"
                     panelClassName="bg-gradient-to-br from-purple-600 via-pink-600 to-red-600 text-white border-pink-500 shadow-2xl animate-[spin-celebrate_0.5s_ease-out]"
-                    footerContent={ <button onClick={handleCloseWinningBanner} className="w-full sm:w-auto mt-2 sm:mt-0 bg-white/25 hover:bg-white/35 text-white font-semibold py-2.5 px-6 rounded-lg text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70">Acknowledge & Continue</button> }
+                    footerContent={
+                        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 w-full">
+                            <button
+                                onClick={handleVoidSpin}
+                                className="w-full sm:w-auto order-2 sm:order-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 active:bg-red-700 rounded-lg shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 transition-colors"
+                            >
+                                Void Spin
+                            </button>
+                            <button
+                                onClick={handleConfirmWin}
+                                className="w-full sm:w-auto order-1 sm:order-2 px-4 py-2.5 text-sm font-semibold text-slate-900 bg-green-400 hover:bg-green-500 active:bg-green-600 rounded-lg shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800 transition-colors"
+                            >
+                                Confirm Winner
+                            </button>
+                        </div>
+                    }
                 >
                     <div className="text-center py-4">
                         <p className="text-3xl md:text-5xl font-bold">🎉 Winner! 🎉</p>
-                        <p className="text-xl md:text-3xl mt-4">You won: <span className="font-extrabold tracking-wide text-yellow-300">{winningItemDetails.name}</span></p>
+                        <p className="text-xl md:text-3xl mt-4">
+                            Landed on: <span className="font-extrabold tracking-wide text-yellow-300">{winningItemDetails.name}</span>
+                        </p>
+                        {removeOnHitActive && ( // Conditional helper text
+                            <p className="mt-3 text-xs text-white/80 px-2">
+                                (Confirming will remove this item from the wheel as "Remove on Hit" is active)
+                            </p>
+                        )}
+                        {!removeOnHitActive && ( // Optional: Text when remove on hit is OFF
+                            <p className="mt-3 text-xs text-white/80 px-2">
+                                (Item will remain on the wheel)
+                            </p>
+                        )}
                     </div>
                 </Modal>
             )}
+
 
             {/* Main Wheel Area (remains the same, renders WheelCanvasContainer) */}
             <div className="w-full mx-auto flex flex-col items-center justify-center flex-grow relative">
