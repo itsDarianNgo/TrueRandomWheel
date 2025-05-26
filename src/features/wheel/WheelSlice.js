@@ -7,8 +7,8 @@ import { setItems as setItemsAction, removeItemInstance as removeItemInstanceAct
 const WHEEL_SETTINGS_STORAGE_KEY = 'trueRandomWheel_wheelSettings';
 const SHUFFLE_STEP_DELAY_MS = 100; // Delay for visual feedback during N_times shuffle
 
-const loadWheelSettingsFromStorage = () => {const defaultSettings = { pointerPosition: 'top', removeOnHit: false, shuffleCount: 3, spinDuration: 7000, minSpins: 5, pageBackgroundImageUrl: null, wheelSurfaceImageUrl: null, }; try { const storedSettings = localStorage.getItem(WHEEL_SETTINGS_STORAGE_KEY); if (storedSettings) { return { ...defaultSettings, ...JSON.parse(storedSettings) }; } } catch (error) { console.error("Error loading wheel settings from localStorage:", error); } return defaultSettings; };
-const saveWheelSettingsToStorage = (settings) => {try { const { pointerPosition, removeOnHit, shuffleCount, spinDuration, minSpins, pageBackgroundImageUrl, wheelSurfaceImageUrl } = settings; localStorage.setItem(WHEEL_SETTINGS_STORAGE_KEY, JSON.stringify({ pointerPosition, removeOnHit, shuffleCount, spinDuration, minSpins, pageBackgroundImageUrl, wheelSurfaceImageUrl})); } catch (error) { console.error("Error saving wheel settings to localStorage:", error); } };
+const loadWheelSettingsFromStorage = () => {const defaultSettings = { pointerPosition: 'top', removeOnHit: false, shuffleCount: 3, spinDuration: 7000, minSpins: 5, pageBackgroundImageUrl: null, wheelSurfaceImageUrl: null, segmentOpacity: 0.85,}; try { const storedSettings = localStorage.getItem(WHEEL_SETTINGS_STORAGE_KEY); if (storedSettings) { return { ...defaultSettings, ...JSON.parse(storedSettings) }; } } catch (error) { console.error("Error loading wheel settings from localStorage:", error); } return defaultSettings; };
+const saveWheelSettingsToStorage = (settings) => {try { const { pointerPosition, removeOnHit, shuffleCount, spinDuration, minSpins, pageBackgroundImageUrl, wheelSurfaceImageUrl, segmentOpacity  } = settings; localStorage.setItem(WHEEL_SETTINGS_STORAGE_KEY, JSON.stringify({ pointerPosition, removeOnHit, shuffleCount, spinDuration, minSpins, pageBackgroundImageUrl, wheelSurfaceImageUrl})); } catch (error) { console.error("Error saving wheel settings to localStorage:", error); } };
 
 const persistedSettings = loadWheelSettingsFromStorage();
 const initialState = {
@@ -19,6 +19,7 @@ const initialState = {
     minSpins: persistedSettings.minSpins,
     pageBackgroundImageUrl: persistedSettings.pageBackgroundImageUrl,
     wheelSurfaceImageUrl: persistedSettings.wheelSurfaceImageUrl,
+    segmentOpacity: persistedSettings.segmentOpacity,
     wheelStatus: 'idle',
     winningItemDetails: null,
     displayWinningBanner: false,
@@ -145,8 +146,6 @@ const wheelSlice = createSlice({
         toggleRemoveOnHit: (state) => { state.removeOnHit = !state.removeOnHit; saveWheelSettingsToStorage(state); },
         setShuffleCount: (state, action) => { const count = parseInt(action.payload, 10); state.shuffleCount = isNaN(count) || count < 1 ? 1 : count; saveWheelSettingsToStorage(state); },
         setSpinParameters: (state, action) => { const { duration, spins } = action.payload; if (typeof duration === 'number' && duration > 0) state.spinDuration = duration; if (typeof spins === 'number' && spins > 0) state.minSpins = spins; saveWheelSettingsToStorage(state); },
-
-        // ***** NEW REDUCERS FOR IMAGES *****
         setPageBackgroundImageUrl: (state, action) => {
             state.pageBackgroundImageUrl = action.payload; // Validation happens in UI before dispatch
             saveWheelSettingsToStorage(state);
@@ -155,7 +154,15 @@ const wheelSlice = createSlice({
             state.wheelSurfaceImageUrl = action.payload; // Validation happens in UI before dispatch
             saveWheelSettingsToStorage(state);
         },
-        // ***** END NEW REDUCERS *****
+
+        // ***** NEW REDUCER FOR SEGMENT OPACITY *****
+        setSegmentOpacity: (state, action) => {
+            let newOpacity = parseFloat(action.payload);
+            if (isNaN(newOpacity) || newOpacity < 0) newOpacity = 0;
+            if (newOpacity > 1) newOpacity = 1;
+            state.segmentOpacity = newOpacity;
+            saveWheelSettingsToStorage(state);
+        },
 
     },
     extraReducers: (builder) => { // To handle thunk lifecycle if needed (e.g., pending, rejected)
@@ -179,7 +186,7 @@ const wheelSlice = createSlice({
 export const {
     setPointerPosition, setWheelStatus, setWinningItemDetails, setTargetWinningItem,
     clearWinningItemDetails, setDisplayWinningBanner, toggleRemoveOnHit,
-    setShuffleCount, setSpinParameters, setPageBackgroundImageUrl, setWheelSurfaceImageUrl
+    setShuffleCount, setSpinParameters, setPageBackgroundImageUrl, setWheelSurfaceImageUrl, setSegmentOpacity
 } = wheelSlice.actions;
 
 // Input selector for the whole wheel slice
@@ -215,5 +222,8 @@ export const selectPointerPosition = (state) => state.wheel.pointerPosition;
 export const selectMinSpins = (state) => state.wheel.minSpins;
 export const selectSpinDuration = (state) => state.wheel.spinDuration;
 export const selectShuffleCountValue = (state) => state.wheel.shuffleCount;
+
+// ***** NEW SELECTOR FOR SEGMENT OPACITY *****
+export const selectSegmentOpacity = (state) => state.wheel.segmentOpacity;
 
 export default wheelSlice.reducer;

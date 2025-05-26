@@ -138,14 +138,13 @@ const WheelPage = () => {
                     className="flex flex-col items-center space-y-4 transition-transform duration-300 ease-in-out w-full h-full flex-grow justify-center"
                     style={{ transform: `translateX(${wheelTranslateXVal}px)` }}
                 >
+                    {/* ***** MODIFIED DIV for background cutout fix ***** */}
                     <div
                         ref={wheelAreaRef}
-                        className="bg-slate-800 p-3 sm:p-4 rounded-xl shadow-2xl flex items-center justify-center w-full max-w-[90vw] sm:max-w-[80vw] md:max-w-[70vw] lg:max-w-[60vw] xl:max-w-[800px] h-auto aspect-square relative"
+                        className={`p-3 sm:p-4 rounded-xl shadow-2xl flex items-center justify-center w-full max-w-[90vw] sm:max-w-[80vw] md:max-w-[70vw] lg:max-w-[60vw] xl:max-w-[800px] h-auto aspect-square relative 
+                                    ${pageBackgroundImageUrl ? 'bg-transparent' : 'bg-slate-800'}`}
                     >
-                        <div
-                            className="relative origin-center transition-transform duration-300 ease-in-out"
-                            style={{ width: `${canvasDimensions.width}px`, height: `${canvasDimensions.height}px`, transform: `scale(${visualWheelScale})`}}
-                        >
+                        <div className="relative origin-center transition-transform duration-300 ease-in-out" style={{ width: `${canvasDimensions.width}px`, height: `${canvasDimensions.height}px`, transform: `scale(${visualWheelScale})`}}>
                             <WheelCanvasContainer
                                 width={canvasDimensions.width}
                                 height={canvasDimensions.height}

@@ -16,6 +16,7 @@ const WheelCanvas = forwardRef(({
                                     defaultSegmentColors = REFINED_DEFAULT_SEGMENT_COLORS, canvasClassName = '',
                                     wheelStatus = 'idle',
                                     wheelSurfaceImageUrl = null, // New prop
+                                    segmentOpacity = 0.85,
                                 }, ref) => {
     const canvasRef = useRef(null);
     const [internalIsSpinning, setInternalIsSpinning] = useState(false);
@@ -58,7 +59,7 @@ const WheelCanvas = forwardRef(({
     const getPointerTargetAngle = useCallback(() => { /* ... same as Response #18 ... */ switch (pointerPosition) { case 'top': return 1.5 * Math.PI; case 'bottom': return 0.5 * Math.PI; case 'left': return Math.PI; case 'right': default: return 0; } }, [pointerPosition]);
     const drawSegmentText = useCallback((ctx, item, textX, textY, maxTextWidth, radius, numSegments, itemActualColor) => { /* ... same as Response #18 ... */ const baseFontSize = radius / (numSegments === 1 ? 6 : (numSegments > 10 ? 12 : 10)); const dynamicFontSize = Math.max(12, Math.min(numSegments === 1 ? 40 : (numSegments > 6 ? 22 : 28), baseFontSize)); ctx.font = `600 ${dynamicFontSize}px ${fontFamily}`; ctx.fillStyle = overrideTextColor || (isColorLight(itemActualColor) ? DEFAULT_TEXT_COLOR_DARK : DEFAULT_TEXT_COLOR_LIGHT); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; let displayText = item.name; if (ctx.measureText(displayText).width > maxTextWidth) { for (let i = displayText.length - 1; i > 0; i--) { displayText = item.name.substring(0, i) + '...'; if (ctx.measureText(displayText).width <= maxTextWidth) break; } if (ctx.measureText(displayText).width > maxTextWidth) { displayText = item.name.substring(0,1); if (ctx.measureText(displayText).width > maxTextWidth && item.name.length > 0) displayText = ""; } } ctx.save(); ctx.translate(textX, textY); ctx.fillText(displayText, 0, 0); ctx.restore(); }, [fontFamily, overrideTextColor]);
 
-    // Modified drawSegment
+    // Modified drawSegment to use segmentOpacity prop
     const drawSegment = useCallback((ctx, item, index, numSegments, centerX, centerY, radius, hasSurfaceImage) => {
         const itemActualColor = item.color || defaultSegmentColors[index % defaultSegmentColors.length];
         let currentSegmentStrokeStyle;
@@ -72,11 +73,10 @@ const WheelCanvas = forwardRef(({
         const startAngle = index * segmentAngle;
         const endAngle = startAngle + segmentAngle;
 
-        // Draw segment color fill (conditionally with opacity if surface image exists and item has color)
-        if (item.color) { // Only draw fill if item has a specific color
+        if (item.color) {
             ctx.fillStyle = item.color;
-            if (hasSurfaceImage) { // If there's a surface image, draw item color with opacity
-                ctx.globalAlpha = 0.75;
+            if (hasSurfaceImage) {
+                ctx.globalAlpha = segmentOpacity; // Use prop here
             }
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
@@ -87,7 +87,6 @@ const WheelCanvas = forwardRef(({
                 ctx.globalAlpha = 1.0; // Reset alpha
             }
         } else if (!hasSurfaceImage) {
-            // If no surface image AND no item color, use a default segment color
             ctx.fillStyle = defaultSegmentColors[index % defaultSegmentColors.length];
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
@@ -121,7 +120,7 @@ const WheelCanvas = forwardRef(({
             drawSegmentText(ctx, item, textX, textY, maxTextWidthForSegment, radius, numSegments, item.color || defaultSegmentColors[index % defaultSegmentColors.length]);
         }
 
-    }, [fontFamily, defaultSegmentColors, segmentStrokeWidth, overrideTextColor, overrideSegmentStrokeColor, drawSegmentText]);
+    }, [fontFamily, defaultSegmentColors, segmentStrokeWidth, overrideTextColor, overrideSegmentStrokeColor, drawSegmentText, segmentOpacity]);
 
 
     const drawPointer = useCallback((ctx, centerX, centerY, radius) => { /* ... same as Response #18 ... */ const pointerAngle = getPointerTargetAngle(); const pointerLength = radius * 0.18; const pointerHalfWidthAtBase = radius * 0.05; ctx.fillStyle = pointerColor; ctx.beginPath(); const tipX = centerX + (radius + segmentStrokeWidth) * Math.cos(pointerAngle); const tipY = centerY + (radius + segmentStrokeWidth) * Math.sin(pointerAngle); const baseCenterX = centerX + (radius + segmentStrokeWidth + pointerLength) * Math.cos(pointerAngle); const baseCenterY = centerY + (radius + segmentStrokeWidth + pointerLength) * Math.sin(pointerAngle); const perpAngle1 = pointerAngle + Math.PI / 2; const perpAngle2 = pointerAngle - Math.PI / 2; const baseX1 = baseCenterX + pointerHalfWidthAtBase * Math.cos(perpAngle1); const baseY1 = baseCenterY + pointerHalfWidthAtBase * Math.sin(perpAngle1); const baseX2 = baseCenterX + pointerHalfWidthAtBase * Math.cos(perpAngle2); const baseY2 = baseCenterY + pointerHalfWidthAtBase * Math.sin(perpAngle2); ctx.moveTo(tipX, tipY); ctx.lineTo(baseX1, baseY1); ctx.lineTo(baseX2, baseY2); ctx.closePath(); ctx.fill(); }, [getPointerTargetAngle, pointerColor, segmentStrokeWidth]);
@@ -192,7 +191,7 @@ const WheelCanvas = forwardRef(({
             ctx.fillText('Shuffling...', centerX, centerY);
         }
         drawPointer(ctx, centerX, centerY, wheelRadius);
-    }, [items, width, height, currentWheelRotation, fontFamily, drawSegment, drawPointer, internalIsSpinning, wheelStatus, surfaceImage, surfaceImageStatus /* other visual props */]);
+    }, [items, width, height, currentWheelRotation, fontFamily, drawSegment, drawPointer, internalIsSpinning, wheelStatus, surfaceImage, surfaceImageStatus, segmentOpacity]);
 
     useEffect(() => { drawWheel(); }, [drawWheel]); // Redraw whenever drawWheel or its dependencies change
 
@@ -214,7 +213,8 @@ WheelCanvas.propTypes = { /* ... same as Response #18, plus wheelSurfaceImageUrl
     fontFamily: PropTypes.string, overrideTextColor: PropTypes.string, overrideSegmentStrokeColor: PropTypes.string,
     segmentStrokeWidth: PropTypes.number, defaultSegmentColors: PropTypes.arrayOf(PropTypes.string), canvasClassName: PropTypes.string,
     wheelStatus: PropTypes.string.isRequired,
-    wheelSurfaceImageUrl: PropTypes.string, // New prop
+    wheelSurfaceImageUrl: PropTypes.string,
+    segmentOpacity: PropTypes.number,
 };
 WheelCanvas.displayName = 'WheelCanvas';
 export default WheelCanvas;

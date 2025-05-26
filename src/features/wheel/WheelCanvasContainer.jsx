@@ -9,7 +9,8 @@ import {
     selectWheelSettings,
     selectWheelStatus,
     selectTargetWinningItem,
-    selectWheelSurfaceImageUrl // Selector import is present
+    selectWheelSurfaceImageUrl,
+    selectSegmentOpacity // New
 } from './wheelSlice';
 
 const WheelCanvasContainer = ({ width, height, canvasClassName }) => {
@@ -22,7 +23,7 @@ const WheelCanvasContainer = ({ width, height, canvasClassName }) => {
     const wheelStatus = useSelector(selectWheelStatus);
     const targetWinningItem = useSelector(selectTargetWinningItem);
     const wheelSurfaceImageUrl = useSelector(selectWheelSurfaceImageUrl);
-
+    const segmentOpacity = useSelector(selectSegmentOpacity); // New
 
 
     // Effect to trigger spin animation when status and target are ready
@@ -59,7 +60,8 @@ const WheelCanvasContainer = ({ width, height, canvasClassName }) => {
             pointerPosition={wheelSettings.pointerPosition}
             minSpins={wheelSettings.minSpins}
             spinDuration={wheelSettings.spinDuration}
-            wheelSurfaceImageUrl={wheelSurfaceImageUrl} // Now correctly defined
+            wheelSurfaceImageUrl={wheelSurfaceImageUrl}
+            segmentOpacity={segmentOpacity} // Pass new prop
 
             onWheelClick={handleWheelClick}
             onSpinStart={handleSpinStart}

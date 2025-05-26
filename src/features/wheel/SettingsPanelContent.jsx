@@ -11,7 +11,8 @@ import {
     selectWheelSettings, selectWheelStatus,
     setPointerPosition, toggleRemoveOnHit, setShuffleCount as setReduxShuffleCount,
     setPageBackgroundImageUrl, setWheelSurfaceImageUrl, // New image actions
-    selectPageBackgroundImageUrl, selectWheelSurfaceImageUrl // New image selectors
+    selectPageBackgroundImageUrl, selectWheelSurfaceImageUrl, // New image selectors
+    setSegmentOpacity, selectSegmentOpacity
 } from './wheelSlice';
 import { selectAllItems } from '../items/itemSlice';
 
@@ -96,6 +97,7 @@ const SettingsPanelContent = ({ onShuffleNTimes }) => {
     const allItems = useSelector(selectAllItems);
     const pageBgUrlFromStore = useSelector(selectPageBackgroundImageUrl);
     const wheelSurfaceUrlFromStore = useSelector(selectWheelSurfaceImageUrl);
+    const segmentOpacityFromStore = useSelector(selectSegmentOpacity); // New
 
     const itemsCount = allItems.length;
     const isDisabled = wheelStatus !== 'idle';
@@ -111,6 +113,10 @@ const SettingsPanelContent = ({ onShuffleNTimes }) => {
     const handleClearPageBg = () => dispatch(setPageBackgroundImageUrl(null));
     const handleSetWheelSurface = (url) => dispatch(setWheelSurfaceImageUrl(url));
     const handleClearWheelSurface = () => dispatch(setWheelSurfaceImageUrl(null));
+    const handleSegmentOpacityChange = (e) => {
+        const opacityValue = parseInt(e.target.value, 10) / 100;
+        dispatch(setSegmentOpacity(opacityValue));
+    };
 
     const tabButtonClass = (tabName) => `flex-1 py-3 px-2 text-xs sm:text-sm font-semibold text-center transition-all duration-150 ease-in-out focus:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-800 rounded-t-md ${activeTab === tabName ? 'bg-slate-700/60 text-sky-300 border-b-2 border-sky-400 shadow-inner' : 'text-slate-400 hover:bg-slate-700/30 hover:text-slate-200'}`;
 
@@ -153,6 +159,26 @@ const SettingsPanelContent = ({ onShuffleNTimes }) => {
                                 onClearUrl={handleClearWheelSurface}
                                 disabled={isDisabled}
                             />
+                        </section>
+                        {/* New Section for Segment Opacity */}
+                        <section className="p-4 bg-slate-700/60 rounded-lg shadow">
+                            <h4 className="text-md font-semibold text-sky-300 mb-3 text-center">Wheel Appearance</h4>
+                            <div>
+                                <label htmlFor="segmentOpacity" className="block text-sm font-medium text-slate-300 mb-1">
+                                    Segment Color Opacity (on Wheel Image): {Math.round(segmentOpacityFromStore * 100)}%
+                                </label>
+                                <input
+                                    type="range"
+                                    id="segmentOpacity"
+                                    min="0"
+                                    max="100"
+                                    value={Math.round(segmentOpacityFromStore * 100)}
+                                    onChange={handleSegmentOpacityChange}
+                                    disabled={isDisabled || !wheelSurfaceUrlFromStore} // Disable if no wheel surface image
+                                    className={`w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-sky-500 ${ (isDisabled || !wheelSurfaceUrlFromStore) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                />
+                                <p className="mt-1 text-xs text-slate-400">Controls how much the item colors cover the wheel surface image. 0% = colors fully transparent, 100% = colors fully opaque.</p>
+                            </div>
                         </section>
                     </div>
                 )}
