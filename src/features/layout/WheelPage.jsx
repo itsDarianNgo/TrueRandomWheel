@@ -6,7 +6,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { selectAllItems } from '../items/itemSlice';
 import {
     selectWheelStatus, selectWinningItemDetails,
-    selectDisplayWinningBanner, acknowledgeWinnerThunk, performShuffleThunk,
+    selectDisplayWinningBanner, acknowledgeWinnerThunk, performShuffleThunk, selectPageBackgroundImageUrl,
 } from '../wheel/wheelSlice';
 
 // Components
@@ -27,11 +27,13 @@ const WheelPage = () => {
     const wheelStatus = useSelector(selectWheelStatus);
     const winningItemDetails = useSelector(selectWinningItemDetails);
     const displayWinningBanner = useSelector(selectDisplayWinningBanner);
+    const pageBackgroundImageUrl = useSelector(selectPageBackgroundImageUrl); // New
 
     // State for settings panel visibility is managed here
     const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
     const [canvasDimensions, setCanvasDimensions] = useState({ width: 520, height: 520 });
     const wheelAreaRef = useRef(null);
+    const pageRootRef = useRef(null); // Ref for the main div to set background
 
     const PANEL_WIDTH_PX = 480;
     const WHEEL_SECTION_TRANSLATE_X_OFFSET = PANEL_WIDTH_PX / 2.5;
@@ -54,6 +56,23 @@ const WheelPage = () => {
         resizeObserver.observe(wheelElement);
         return () => resizeObserver.unobserve(wheelElement);
     }, [canvasDimensions.width, canvasDimensions.height]);
+
+    // Effect to apply page background image
+    useEffect(() => {
+        const pageElement = pageRootRef.current;
+        if (!pageElement) return;
+
+        if (pageBackgroundImageUrl && /^(https?:\/\/)/i.test(pageBackgroundImageUrl)) {
+            pageElement.style.backgroundImage = `url('${pageBackgroundImageUrl}')`;
+            pageElement.style.backgroundSize = 'cover';
+            pageElement.style.backgroundPosition = 'center';
+            pageElement.style.backgroundRepeat = 'no-repeat';
+        } else {
+            // Revert to default (which should be handled by Tailwind classes on this div)
+            // Or explicitly set back to gradient if that was the JS-controlled default
+            pageElement.style.backgroundImage = ''; // Clears inline style, CSS class takes over
+        }
+    }, [pageBackgroundImageUrl]);
 
     // Callback to close the winning banner (dispatches acknowledgeWinnerThunk)
     const handleCloseWinningBanner = useCallback(() => {
@@ -83,7 +102,7 @@ const WheelPage = () => {
     const wheelTranslateXVal = isSettingsPanelOpen ? -WHEEL_SECTION_TRANSLATE_X_OFFSET : 0;
 
     return (
-        <div className="w-full flex flex-col items-center justify-start p-4 sm:p-6 lg:p-8 space-y-8 min-h-screen relative overflow-x-hidden bg-slate-850">
+        <div ref={pageRootRef} className="w-full flex flex-col items-center justify-start p-4 sm:p-6 lg:p-8 space-y-8 min-h-screen relative overflow-x-hidden bg-slate-850 transition-all duration-500 ease-in-out">
             {/* Settings Toggle Button - rendered by WheelPage */}
             <button
                 onClick={toggleSettingsPanel}

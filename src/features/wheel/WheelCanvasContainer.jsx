@@ -1,52 +1,54 @@
 // src/features/wheel/WheelCanvasContainer.jsx
 import React, { useEffect, useRef, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import { useSelector, useDispatch } from 'react-redux';
 import WheelCanvas from './WheelCanvas'; // The presentational component
-import { spinWheelThunk, finalizeSpinThunk } from './wheelSlice';
+import { spinWheelThunk, finalizeSpinThunk } from './wheelSlice'; // Assuming thunks are correctly imported
 import { selectAllItems } from '../items/itemSlice';
 import {
     selectWheelSettings,
     selectWheelStatus,
-    selectTargetWinningItem
+    selectTargetWinningItem,
+    selectWheelSurfaceImageUrl // Selector import is present
 } from './wheelSlice';
-import PropTypes from "prop-types";
 
-const WheelCanvasContainer = ({ width, height, canvasClassName }) => { // Takes display props from parent
+const WheelCanvasContainer = ({ width, height, canvasClassName }) => {
     const dispatch = useDispatch();
     const wheelCanvasRef = useRef(null);
 
+    // Select necessary state from Redux
     const items = useSelector(selectAllItems);
     const wheelSettings = useSelector(selectWheelSettings);
     const wheelStatus = useSelector(selectWheelStatus);
     const targetWinningItem = useSelector(selectTargetWinningItem);
+    const wheelSurfaceImageUrl = useSelector(selectWheelSurfaceImageUrl);
 
+
+
+    // Effect to trigger spin animation when status and target are ready
     useEffect(() => {
         if (wheelStatus === 'spinning' && targetWinningItem && wheelCanvasRef.current?.spinToTarget) {
-            // console.log("[WheelCanvasContainer] Triggering spinToTarget for:", targetWinningItem.name);
             wheelCanvasRef.current.spinToTarget(
                 targetWinningItem,
                 wheelSettings.minSpins,
                 wheelSettings.spinDuration
             );
         }
-    }, [wheelStatus, targetWinningItem, wheelSettings.minSpins, wheelSettings.spinDuration]); // Effect dependencies
+    }, [wheelStatus, targetWinningItem, wheelSettings.minSpins, wheelSettings.spinDuration]);
 
+    // Callbacks to pass to WheelCanvas
     const handleWheelClick = useCallback(() => {
-        // Only dispatch if idle and items exist; thunk will also check item count
         if (wheelStatus === 'idle' && items.length > 0) {
             dispatch(spinWheelThunk());
         }
     }, [dispatch, wheelStatus, items.length]);
 
     const handleSpinStart = useCallback((_itemBeingSpunTo) => {
-        // This callback comes from WheelCanvas when its animation physically starts
-        // console.log("[WheelCanvasContainer] WheelCanvas reported spin animation started for:", itemBeingSpunTo.name);
-        // No dispatch needed here as spinWheelThunk has already set relevant statuses.
+        // Optional: dispatch an action if specific tracking of canvas animation start is needed
+        // console.log("[WheelCanvasContainer] WheelCanvas reported spin animation started for:", _itemBeingSpunTo.name);
     }, []);
 
     const handleSpinEnd = useCallback((landedItem, errorInfo) => {
-        // This callback comes from WheelCanvas when its animation physically ends
-        // console.log("[WheelCanvasContainer] WheelCanvas reported spin animation ended. Landed:", landedItem, "Error:", errorInfo);
         dispatch(finalizeSpinThunk({ confirmedLandedItem: landedItem, errorInfo }));
     }, [dispatch]);
 
@@ -55,20 +57,21 @@ const WheelCanvasContainer = ({ width, height, canvasClassName }) => { // Takes 
             ref={wheelCanvasRef}
             items={items}
             pointerPosition={wheelSettings.pointerPosition}
-            minSpins={wheelSettings.minSpins}       // Pass these down from settings
-            spinDuration={wheelSettings.spinDuration} // Pass these down from settings
+            minSpins={wheelSettings.minSpins}
+            spinDuration={wheelSettings.spinDuration}
+            wheelSurfaceImageUrl={wheelSurfaceImageUrl} // Now correctly defined
 
             onWheelClick={handleWheelClick}
             onSpinStart={handleSpinStart}
             onSpinEnd={handleSpinEnd}
 
-            wheelStatus={wheelStatus} // For WheelCanvas to show generic busy/shuffle states
-
-            // Visual props passed from parent (WheelPage)
+            wheelStatus={wheelStatus}
             width={width}
             height={height}
             canvasClassName={canvasClassName}
-            // Other visual props like pointerColor, fontFamily could also come from wheelSettings if made configurable
+            // Other visual props from parent/store as needed
+            fontFamily={wheelSettings.fontFamily || undefined} // Example if fontFamily becomes a setting
+            pointerColor={wheelSettings.pointerColor || undefined} // Example
         />
     );
 };
@@ -78,6 +81,7 @@ WheelCanvasContainer.propTypes = {
     height: PropTypes.number.isRequired,
     canvasClassName: PropTypes.string,
 };
+
 WheelCanvasContainer.defaultProps = {
     canvasClassName: '',
 };

@@ -1,5 +1,5 @@
 // src/features/wheel/wheelSlice.js
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, createSelector} from '@reduxjs/toolkit';
 import PRNG from '../../core/prng/PRNGModule'; // For selecting winner
 import { addHistoryEntry } from '../history/historySlice'; // To dispatch to another slice
 import { setItems as setItemsAction, removeItemInstance as removeItemInstanceAction } from '../items/itemSlice'; // Actions from itemSlice
@@ -7,8 +7,8 @@ import { setItems as setItemsAction, removeItemInstance as removeItemInstanceAct
 const WHEEL_SETTINGS_STORAGE_KEY = 'trueRandomWheel_wheelSettings';
 const SHUFFLE_STEP_DELAY_MS = 100; // Delay for visual feedback during N_times shuffle
 
-const loadWheelSettingsFromStorage = () => { /* ... same as Response #10 ... */ const defaultSettings = { pointerPosition: 'top', removeOnHit: false, shuffleCount: 3, spinDuration: 7000, minSpins: 5, }; try { const storedSettings = localStorage.getItem(WHEEL_SETTINGS_STORAGE_KEY); if (storedSettings) { return { ...defaultSettings, ...JSON.parse(storedSettings) }; } } catch (error) { console.error("Error loading wheel settings from localStorage:", error); } return defaultSettings; };
-const saveWheelSettingsToStorage = (settings) => { /* ... same as Response #10 ... */ try { const { pointerPosition, removeOnHit, shuffleCount, spinDuration, minSpins } = settings; localStorage.setItem(WHEEL_SETTINGS_STORAGE_KEY, JSON.stringify({ pointerPosition, removeOnHit, shuffleCount, spinDuration, minSpins })); } catch (error) { console.error("Error saving wheel settings to localStorage:", error); } };
+const loadWheelSettingsFromStorage = () => {const defaultSettings = { pointerPosition: 'top', removeOnHit: false, shuffleCount: 3, spinDuration: 7000, minSpins: 5, pageBackgroundImageUrl: null, wheelSurfaceImageUrl: null, }; try { const storedSettings = localStorage.getItem(WHEEL_SETTINGS_STORAGE_KEY); if (storedSettings) { return { ...defaultSettings, ...JSON.parse(storedSettings) }; } } catch (error) { console.error("Error loading wheel settings from localStorage:", error); } return defaultSettings; };
+const saveWheelSettingsToStorage = (settings) => {try { const { pointerPosition, removeOnHit, shuffleCount, spinDuration, minSpins, pageBackgroundImageUrl, wheelSurfaceImageUrl } = settings; localStorage.setItem(WHEEL_SETTINGS_STORAGE_KEY, JSON.stringify({ pointerPosition, removeOnHit, shuffleCount, spinDuration, minSpins, pageBackgroundImageUrl, wheelSurfaceImageUrl})); } catch (error) { console.error("Error saving wheel settings to localStorage:", error); } };
 
 const persistedSettings = loadWheelSettingsFromStorage();
 const initialState = {
@@ -17,6 +17,8 @@ const initialState = {
     shuffleCount: persistedSettings.shuffleCount,
     spinDuration: persistedSettings.spinDuration,
     minSpins: persistedSettings.minSpins,
+    pageBackgroundImageUrl: persistedSettings.pageBackgroundImageUrl,
+    wheelSurfaceImageUrl: persistedSettings.wheelSurfaceImageUrl,
     wheelStatus: 'idle',
     winningItemDetails: null,
     displayWinningBanner: false,
@@ -143,6 +145,18 @@ const wheelSlice = createSlice({
         toggleRemoveOnHit: (state) => { state.removeOnHit = !state.removeOnHit; saveWheelSettingsToStorage(state); },
         setShuffleCount: (state, action) => { const count = parseInt(action.payload, 10); state.shuffleCount = isNaN(count) || count < 1 ? 1 : count; saveWheelSettingsToStorage(state); },
         setSpinParameters: (state, action) => { const { duration, spins } = action.payload; if (typeof duration === 'number' && duration > 0) state.spinDuration = duration; if (typeof spins === 'number' && spins > 0) state.minSpins = spins; saveWheelSettingsToStorage(state); },
+
+        // ***** NEW REDUCERS FOR IMAGES *****
+        setPageBackgroundImageUrl: (state, action) => {
+            state.pageBackgroundImageUrl = action.payload; // Validation happens in UI before dispatch
+            saveWheelSettingsToStorage(state);
+        },
+        setWheelSurfaceImageUrl: (state, action) => {
+            state.wheelSurfaceImageUrl = action.payload; // Validation happens in UI before dispatch
+            saveWheelSettingsToStorage(state);
+        },
+        // ***** END NEW REDUCERS *****
+
     },
     extraReducers: (builder) => { // To handle thunk lifecycle if needed (e.g., pending, rejected)
         builder
@@ -165,14 +179,41 @@ const wheelSlice = createSlice({
 export const {
     setPointerPosition, setWheelStatus, setWinningItemDetails, setTargetWinningItem,
     clearWinningItemDetails, setDisplayWinningBanner, toggleRemoveOnHit,
-    setShuffleCount, setSpinParameters,
+    setShuffleCount, setSpinParameters, setPageBackgroundImageUrl, setWheelSurfaceImageUrl
 } = wheelSlice.actions;
 
-export const selectWheelSettings = (state) => ({ /* ... same as Response #10 ... */ pointerPosition: state.wheel.pointerPosition, removeOnHit: state.wheel.removeOnHit, shuffleCount: state.wheel.shuffleCount, spinDuration: state.wheel.spinDuration, minSpins: state.wheel.minSpins,});
+// Input selector for the whole wheel slice
+const selectWheelSlice = (state) => state.wheel;
+
+
+// Memoized selector for wheel settings
+export const selectWheelSettings = createSelector(
+    [selectWheelSlice],
+    (wheel) => ({
+        pointerPosition: wheel.pointerPosition,
+        removeOnHit: wheel.removeOnHit,
+        shuffleCount: wheel.shuffleCount,
+        spinDuration: wheel.spinDuration,
+        minSpins: wheel.minSpins,
+        // Include image URLs if they are considered part of "settings" object
+        // that components might consume together.
+        // pageBackgroundImageUrl: wheel.pageBackgroundImageUrl,
+        // wheelSurfaceImageUrl: wheel.wheelSurfaceImageUrl,
+    })
+);
+
+// Individual selectors (these are inherently memoized by useSelector if they return primitives)
 export const selectWheelStatus = (state) => state.wheel.wheelStatus;
 export const selectWinningItemDetails = (state) => state.wheel.winningItemDetails;
 export const selectDisplayWinningBanner = (state) => state.wheel.displayWinningBanner;
 export const selectTargetWinningItem = (state) => state.wheel.targetWinningItem;
-export const selectRemoveOnHit = (state) => state.wheel.removeOnHit;
+export const selectRemoveOnHit = (state) => state.wheel.removeOnHit; // Kept if used individually
+export const selectPageBackgroundImageUrl = (state) => state.wheel.pageBackgroundImageUrl;
+export const selectWheelSurfaceImageUrl = (state) => state.wheel.wheelSurfaceImageUrl;
+// Add individual selectors for other settings if components need them one by one
+export const selectPointerPosition = (state) => state.wheel.pointerPosition;
+export const selectMinSpins = (state) => state.wheel.minSpins;
+export const selectSpinDuration = (state) => state.wheel.spinDuration;
+export const selectShuffleCountValue = (state) => state.wheel.shuffleCount;
 
 export default wheelSlice.reducer;
