@@ -9,7 +9,7 @@ import {
     selectDisplayWinningBanner, performShuffleThunk, selectPageBackgroundImageUrl,
     confirmWinningSpinThunk, voidLastSpinThunk,
     selectRemoveOnHit
-} from 'src/features/wheel/WheelSlice.js';
+} from '../wheel/WheelSlice.js';
 
 // Components
 import WheelCanvasContainer from '../wheel/WheelCanvasContainer';
