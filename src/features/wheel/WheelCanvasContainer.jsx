@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useSelector, useDispatch } from 'react-redux';
 import WheelCanvas from './WheelCanvas'; // The presentational component
-import { spinWheelThunk, finalizeSpinThunk } from './wheelSlice.js'; // Assuming thunks are correctly imported
+import { spinWheelThunk, finalizeSpinThunk } from './WheelSlice.js';
 import { selectAllItems } from '../items/itemSlice';
 import {
     selectWheelSettings,
