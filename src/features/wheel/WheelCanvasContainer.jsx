@@ -11,7 +11,7 @@ import {
     selectTargetWinningItem,
     selectWheelSurfaceImageUrl,
     selectSegmentOpacity // New
-} from './wheelSlice.js';
+} from './WheelSlice.js';
 
 const WheelCanvasContainer = ({ width, height, canvasClassName }) => {
     const dispatch = useDispatch();
