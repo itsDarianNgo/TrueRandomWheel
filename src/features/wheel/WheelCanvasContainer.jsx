@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useSelector, useDispatch } from 'react-redux';
 import WheelCanvas from './WheelCanvas'; // The presentational component
-import { spinWheelThunk, finalizeSpinThunk } from './wheelSlice'; // Assuming thunks are correctly imported
+import { spinWheelThunk, finalizeSpinThunk } from './wheelSlice.js'; // Assuming thunks are correctly imported
 import { selectAllItems } from '../items/itemSlice';
 import {
     selectWheelSettings,
@@ -11,7 +11,7 @@ import {
     selectTargetWinningItem,
     selectWheelSurfaceImageUrl,
     selectSegmentOpacity // New
-} from './wheelSlice';
+} from './wheelSlice.js';
 
 const WheelCanvasContainer = ({ width, height, canvasClassName }) => {
     const dispatch = useDispatch();
