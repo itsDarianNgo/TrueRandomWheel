@@ -4,7 +4,7 @@ import PropTypes from 'prop-types'; // Still needed for InputError
 import { HexColorPicker, HexColorInput } from 'react-colorful';
 import { useDispatch, useSelector } from 'react-redux';
 import { addItemEntry } from './itemSlice';
-import { selectWheelStatus } from '../wheel/wheelSlice';
+import { selectWheelStatus } from '../wheel/WheelSlice';
 
 const InputError = ({ message, id }) => { if (!message) return null; return <p id={id} className="mt-1 text-xs text-red-500 animate-fade-in">{message}</p>; };
 InputError.propTypes = { message: PropTypes.string, id: PropTypes.string };
