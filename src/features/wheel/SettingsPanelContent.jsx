@@ -13,7 +13,7 @@ import { /* ... wheelSlice imports ... */
     selectWheelSettings, selectWheelStatus, setPointerPosition, toggleRemoveOnHit,
     setShuffleCount as setReduxShuffleCount, setPageBackgroundImageUrl, setWheelSurfaceImageUrl,
     selectPageBackgroundImageUrl, selectWheelSurfaceImageUrl, setSegmentOpacity, selectSegmentOpacity
-} from './wheelSlice';
+} from './WheelSlice';
 // Import new action and MAX_ITEMS_OVERALL from itemSlice
 import { selectAllItems, addMultipleItemEntries, MAX_ITEMS_OVERALL as MAX_ITEMS_CONFIG } from '../items/itemSlice';
 
