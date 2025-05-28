@@ -14,7 +14,7 @@ import {
     setPageBackgroundImageUrl, setWheelSurfaceImageUrl,
     selectPageBackgroundImageUrl, selectWheelSurfaceImageUrl,
     setSegmentOpacity, selectSegmentOpacity
-} from './wheelSlice';
+} from './WheelSlice.js';
 import { selectAllItems } from '../items/itemSlice';
 
 // Icons... (same as Response #30)
