@@ -15,7 +15,7 @@ import { /* ... existing wheelSlice imports ... */
     setPageBackgroundImageUrl, setWheelSurfaceImageUrl,
     selectPageBackgroundImageUrl, selectWheelSurfaceImageUrl,
     setSegmentOpacity, selectSegmentOpacity
-} from './wheelSlice';
+} from './WheelSlice';
 import { selectAllItems } from '../items/itemSlice';
 import ImageInputControl from './ImageInputControl';
 
