@@ -3,13 +3,10 @@ import React, { useRef, useEffect, useCallback, useState, useImperativeHandle, f
 import PropTypes from 'prop-types';
 
 // Default Values & Helper Functions (Unchanged)
-const DEFAULT_MIN_SPINS = 5; const DEFAULT_SPIN_DURATION = 7000; const DEFAULT_POINTER_COLOR = '#E53E3E';
-const DEFAULT_FONT_FAMILY = '"Inter", Arial, sans-serif'; const DEFAULT_TEXT_COLOR_LIGHT = '#FFFFFF';
-const DEFAULT_TEXT_COLOR_DARK = '#1A202C'; const DEFAULT_LIGHT_SEGMENT_STROKE_COLOR = '#FFFFFF';
-const DEFAULT_DARK_SEGMENT_STROKE_COLOR = '#4A5568'; const DEFAULT_STROKE_WIDTH = 2;
-const REFINED_DEFAULT_SEGMENT_COLORS = ['#EC4899', '#F59E0B', '#8B5CF6', '#10B981', '#3B82F6', '#EF4444', '#F97316', '#6366F1', '#14B8A6', '#D946EF', '#A855F7', '#0EA5E9'];
+const DEFAULT_MIN_SPINS = 5; const DEFAULT_SPIN_DURATION = 7000; const DEFAULT_POINTER_COLOR = '#E53E3E'; const DEFAULT_FONT_FAMILY = '"Inter", Arial, sans-serif'; const DEFAULT_TEXT_COLOR_LIGHT = '#FFFFFF'; const DEFAULT_TEXT_COLOR_DARK = '#1A202C'; const DEFAULT_LIGHT_SEGMENT_STROKE_COLOR = '#FFFFFF'; const DEFAULT_DARK_SEGMENT_STROKE_COLOR = '#4A5568'; const DEFAULT_STROKE_WIDTH = 2; const REFINED_DEFAULT_SEGMENT_COLORS = ['#EC4899', '#F59E0B', '#8B5CF6', '#10B981', '#3B82F6', '#EF4444', '#F97316', '#6366F1', '#14B8A6', '#D946EF', '#A855F7', '#0EA5E9'];
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
 const isColorLight = (hexColor) => { if (!hexColor || !hexColor.startsWith('#') || (hexColor.length !== 4 && hexColor.length !== 7) ) return false; let hex = hexColor.replace('#', ''); if (hex.length === 3) hex = hex.split('').map(char => char + char).join(''); if (hex.length !== 6) return false; const r = parseInt(hex.substring(0, 2), 16); const g = parseInt(hex.substring(2, 4), 16); const b = parseInt(hex.substring(4, 6), 16); const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b; return luma > 160; };
+
 
 const WheelCanvas = forwardRef(({
                                     items = [], pointerPosition = 'right', onSpinStart = () => {}, onSpinEnd = () => {},
@@ -25,214 +22,62 @@ const WheelCanvas = forwardRef(({
     const animationFrameIdRef = useRef(null);
     const [surfaceImage, setSurfaceImage] = useState(null);
     const [surfaceImageStatus, setSurfaceImageStatus] = useState('idle');
-
-    // ***** NEW STATE for Pre-calculated Text Items *****
     const [processedTextItems, setProcessedTextItems] = useState([]);
 
-    // Effect to load wheelSurfaceImageUrl (same as Response #30)
-    useEffect(() => { /* ... same image loading logic ... */ if (wheelSurfaceImageUrl && /^(https?:\/\/)/i.test(wheelSurfaceImageUrl)) { setSurfaceImageStatus('loading'); const img = new Image(); img.onload = () => { setSurfaceImage(img); setSurfaceImageStatus('loaded'); }; img.onerror = () => { console.warn("Failed to load wheel surface image:", wheelSurfaceImageUrl); setSurfaceImage(null); setSurfaceImageStatus('error'); }; img.src = wheelSurfaceImageUrl; return () => { img.onload = null; img.onerror = null; }; } else { setSurfaceImage(null); setSurfaceImageStatus('idle'); } }, [wheelSurfaceImageUrl]);
+    // MODIFIED useEffect for Text Pre-calculation (from Response #41 - this is already correct)
+    useEffect(() => { /* ... Text pre-calculation logic from Response #41 ... */ const canvas = canvasRef.current; if (!canvas || items.length === 0) { setProcessedTextItems([]); return; } const ctx = canvas.getContext('2d'); const numSegments = items.length; const wheelRadius = Math.min(width / 2, height / 2) * 0.90; const newProcessedItems = items.map((item, index) => { let fontSizeToUse; let maxTextLengthPx; let textLayoutProps; let displayText = item.name; const finalSegmentColor = item.color || defaultSegmentColors[index % defaultSegmentColors.length]; const finalTextColor = overrideTextColor || (isColorLight(finalSegmentColor) ? DEFAULT_TEXT_COLOR_DARK : DEFAULT_TEXT_COLOR_LIGHT); if (numSegments === 1) { const baseSize = wheelRadius / 6; fontSizeToUse = `600 ${Math.max(12, Math.min(40, baseSize))}px ${fontFamily}`; maxTextLengthPx = wheelRadius * 1.6; textLayoutProps = { x: 0, y: 0, angle: 0, maxWidth: maxTextLengthPx, type: 'horizontal-center' }; } else { const baseSize = wheelRadius / (numSegments > 12 ? 14 : (numSegments > 8 ? 12 : 10) ); fontSizeToUse = `600 ${Math.max(9, Math.min(numSegments > 8 ? 16 : (numSegments > 4 ? 20 : 24), baseSize))}px ${fontFamily}`; const textInnerRadiusFactor = 0.25; const textOuterRadiusPaddingFactor = 0.05; const textStartRadialOffset = wheelRadius * textInnerRadiusFactor; maxTextLengthPx = wheelRadius * (1 - textInnerRadiusFactor - textOuterRadiusPaddingFactor); const segmentAngle = (2 * Math.PI) / numSegments; const itemAngle = (index * segmentAngle) + (segmentAngle / 2); textLayoutProps = { x: textStartRadialOffset, y: 0, angle: itemAngle, maxWidth: maxTextLengthPx, type: 'radial' }; } ctx.font = fontSizeToUse; let textWidth = ctx.measureText(displayText).width; if (textWidth > maxTextLengthPx) { for (let k = displayText.length - 1; k > 0; k--) { displayText = item.name.substring(0, k) + "..."; textWidth = ctx.measureText(displayText).width; if (textWidth <= maxTextLengthPx) break; } if (textWidth > maxTextLengthPx) { displayText = item.name.substring(0, Math.max(0, Math.floor(maxTextLengthPx / (ctx.measureText("M")?.width || 10)))) + "..."; if (ctx.measureText(displayText).width > maxTextLengthPx && displayText.length > 3) { displayText = displayText.substring(0, displayText.length - 4) + "..."; } if (ctx.measureText(displayText).width > maxTextLengthPx) displayText = "..."; textWidth = ctx.measureText(displayText).width; } } if (textLayoutProps.type === 'radial' && textWidth < maxTextLengthPx) { const centeringOffset = (maxTextLengthPx - textWidth) / 2; textLayoutProps.x += centeringOffset; } return { id: item.id, originalName: item.name, displayText, textWidth, fontSizeToUse, finalTextColor, finalSegmentColor, textLayoutProps, }; }); setProcessedTextItems(newProcessedItems); }, [items, width, height, fontFamily, defaultSegmentColors, overrideTextColor]);
 
-    // MODIFIED useEffect for Text Pre-calculation
+    // ***** CORRECTED useEffect to load wheelSurfaceImageUrl (http/https OR data:image) *****
     useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas || items.length === 0) {
-            setProcessedTextItems([]);
-            return;
-        }
-        const ctx = canvas.getContext('2d');
-        const numSegments = items.length;
-        const wheelRadius = Math.min(width / 2, height / 2) * 0.90;
-
-        const newProcessedItems = items.map((item, index) => {
-            let fontSizeToUse;
-            let maxTextLengthPx;
-            let textLayoutProps;
-            let displayText = item.name;
-
-            const finalSegmentColor = item.color || defaultSegmentColors[index % defaultSegmentColors.length];
-            const finalTextColor = overrideTextColor || (isColorLight(finalSegmentColor) ? DEFAULT_TEXT_COLOR_DARK : DEFAULT_TEXT_COLOR_LIGHT);
-
-            if (numSegments === 1) {
-                const baseSize = wheelRadius / 6;
-                fontSizeToUse = `600 ${Math.max(12, Math.min(40, baseSize))}px ${fontFamily}`;
-                maxTextLengthPx = wheelRadius * 1.6;
-                textLayoutProps = { x: 0, y: 0, angle: 0, maxWidth: maxTextLengthPx, type: 'horizontal-center' };
-            } else {
-                // Adjusted font size logic slightly for better fit with radial text
-                const baseSize = wheelRadius / (numSegments > 12 ? 14 : (numSegments > 8 ? 12 : 10) );
-                fontSizeToUse = `600 ${Math.max(9, Math.min(numSegments > 8 ? 16 : (numSegments > 4 ? 20 : 24), baseSize))}px ${fontFamily}`;
-
-                // ***** MODIFIED textInnerRadiusFactor *****
-                const textInnerRadiusFactor = 0.25; // Was 0.1, increased to push text outwards
-                const textOuterRadiusPaddingFactor = 0.05;
-                const textStartRadialOffset = wheelRadius * textInnerRadiusFactor;
-                maxTextLengthPx = wheelRadius * (1 - textInnerRadiusFactor - textOuterRadiusPaddingFactor);
-
-                const segmentAngle = (2 * Math.PI) / numSegments;
-                const itemAngle = (index * segmentAngle) + (segmentAngle / 2);
-                textLayoutProps = {
-                    x: textStartRadialOffset, // Base starting X
-                    y: 0,
-                    angle: itemAngle,
-                    maxWidth: maxTextLengthPx,
-                    type: 'radial'
-                };
-            }
-
-            ctx.font = fontSizeToUse;
-            let textWidth = ctx.measureText(displayText).width;
-
-            if (textWidth > maxTextLengthPx) {
-                for (let k = displayText.length - 1; k > 0; k--) {
-                    displayText = item.name.substring(0, k) + "...";
-                    textWidth = ctx.measureText(displayText).width;
-                    if (textWidth <= maxTextLengthPx) break;
-                }
-                if (textWidth > maxTextLengthPx) { // Final check if "X..." is still too long
-                    displayText = item.name.substring(0, Math.max(0, Math.floor(maxTextLengthPx / (ctx.measureText("M")?.width || 10)))) + "...";
-                    if (ctx.measureText(displayText).width > maxTextLengthPx && displayText.length > 3) {
-                        displayText = displayText.substring(0, displayText.length - 4) + "...";
-                    }
-                    if (ctx.measureText(displayText).width > maxTextLengthPx) displayText = "...";
-                    textWidth = ctx.measureText(displayText).width; // Re-measure after final truncation
-                }
-            }
-
-            // ***** NEW: Centering logic for shorter radial text *****
-            if (textLayoutProps.type === 'radial' && textWidth < maxTextLengthPx) {
-                const centeringOffset = (maxTextLengthPx - textWidth) / 2;
-                textLayoutProps.x += centeringOffset; // Adjust the starting x position
-            }
-
-            return {
-                id: item.id,
-                originalName: item.name,
-                displayText,
-                textWidth, // Storing final measured width
-                fontSizeToUse,
-                finalTextColor,
-                finalSegmentColor,
-                textLayoutProps,
+        // Test for http(s) OR data:image scheme
+        if (wheelSurfaceImageUrl && /^(https?:\/\/|data:image\/)/i.test(wheelSurfaceImageUrl)) {
+            setSurfaceImageStatus('loading');
+            const img = new Image();
+            // img.crossOrigin = "Anonymous"; // Omitted for wider compatibility as per decision
+            img.onload = () => {
+                setSurfaceImage(img);
+                setSurfaceImageStatus('loaded');
             };
-        });
-        setProcessedTextItems(newProcessedItems);
+            img.onerror = () => {
+                console.warn("WheelCanvas: Failed to load wheel surface image:", wheelSurfaceImageUrl);
+                setSurfaceImage(null);
+                setSurfaceImageStatus('error');
+            };
+            img.src = wheelSurfaceImageUrl;
 
-    }, [items, width, height, fontFamily, defaultSegmentColors, overrideTextColor]);
-
-
-    const getPointerTargetAngle = useCallback(() => { /* ... same ... */ switch (pointerPosition) { case 'top': return 1.5 * Math.PI; case 'bottom': return 0.5 * Math.PI; case 'left': return Math.PI; case 'right': default: return 0; } }, [pointerPosition]);
-
-    // drawSegmentBase: Only draws color & stroke, NO TEXT
-    const drawSegmentBase = useCallback((ctx, processedItem, numSegments, centerX, centerY, radius, hasSurfaceImage) => {
-        const segmentAngle = (2 * Math.PI) / numSegments;
-        // Find index by id for start/end angle - this assumes processedTextItems maintains order with items prop
-        const index = items.findIndex(it => it.id === processedItem.id);
-        if (index === -1) return; // Should not happen
-
-        const startAngle = index * segmentAngle;
-        const endAngle = startAngle + segmentAngle;
-
-        // Use pre-calculated finalSegmentColor
-        if (processedItem.finalSegmentColor) {
-            ctx.fillStyle = processedItem.finalSegmentColor;
-            if (hasSurfaceImage && items.find(it => it.id === processedItem.id)?.color) { // Apply opacity only if original item had a color
-                ctx.globalAlpha = segmentOpacity;
-            } else {
-                ctx.globalAlpha = 1.0; // Default to full opacity if no surface image or no item color
+            return () => { // Cleanup
+                img.onload = null;
+                img.onerror = null;
+                // Optional: if img.src is an object URL, revoke it: URL.revokeObjectURL(img.src);
+            };
+        } else {
+            setSurfaceImage(null);
+            setSurfaceImageStatus('idle'); // No URL, or invalid scheme for an image
+            if (wheelSurfaceImageUrl) { // If there was a URL but it wasn't valid
+                console.warn("WheelCanvas: Invalid wheel surface image URL provided:", wheelSurfaceImageUrl);
             }
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.arc(centerX, centerY, radius, startAngle, endAngle);
-            ctx.closePath();
-            ctx.fill();
-            ctx.globalAlpha = 1.0; // Reset alpha
         }
-        // If no finalSegmentColor (e.g. item had no color AND no default was applied)
-        // AND hasSurfaceImage, it remains transparent to the surface image.
+    }, [wheelSurfaceImageUrl]);
+    // ***** END CORRECTION *****
 
-        // Stroke
-        if (segmentStrokeWidth > 0 && numSegments > 1) {
-            const strokeColor = overrideSegmentStrokeColor || (isColorLight(processedItem.finalSegmentColor) ? DEFAULT_DARK_SEGMENT_STROKE_COLOR : DEFAULT_LIGHT_SEGMENT_STROKE_COLOR);
-            ctx.strokeStyle = strokeColor;
-            ctx.lineWidth = segmentStrokeWidth;
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.arc(centerX, centerY, radius, startAngle, endAngle, false); // Use false for anticlockwise if angles are setup that way
-            ctx.closePath();
-            ctx.stroke();
-        }
-    }, [segmentStrokeWidth, segmentOpacity, overrideSegmentStrokeColor, items]); // Added items, segmentOpacity
-
-
-    const drawPointer = useCallback((ctx, centerX, centerY, radius) => { /* ... same ... */ const pointerAngle = getPointerTargetAngle(); const pointerLength = radius * 0.18; const pointerHalfWidthAtBase = radius * 0.05; ctx.fillStyle = pointerColor; ctx.beginPath(); const tipX = centerX + (radius + segmentStrokeWidth) * Math.cos(pointerAngle); const tipY = centerY + (radius + segmentStrokeWidth) * Math.sin(pointerAngle); const baseCenterX = centerX + (radius + segmentStrokeWidth + pointerLength) * Math.cos(pointerAngle); const baseCenterY = centerY + (radius + segmentStrokeWidth + pointerLength) * Math.sin(pointerAngle); const perpAngle1 = pointerAngle + Math.PI / 2; const perpAngle2 = pointerAngle - Math.PI / 2; const baseX1 = baseCenterX + pointerHalfWidthAtBase * Math.cos(perpAngle1); const baseY1 = baseCenterY + pointerHalfWidthAtBase * Math.sin(perpAngle1); const baseX2 = baseCenterX + pointerHalfWidthAtBase * Math.cos(perpAngle2); const baseY2 = baseCenterY + pointerHalfWidthAtBase * Math.sin(perpAngle2); ctx.moveTo(tipX, tipY); ctx.lineTo(baseX1, baseY1); ctx.lineTo(baseX2, baseY2); ctx.closePath(); ctx.fill(); }, [getPointerTargetAngle, pointerColor, segmentStrokeWidth]);
-
-    // REVISED drawWheel
-    const drawWheel = useCallback(() => {
-        const canvas = canvasRef.current; if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const numSegments = items.length; // Use original items length for segment calculations
-        const centerX = width / 2; const centerY = height / 2;
-        const wheelRadius = Math.min(centerX, centerY) * 0.90;
-        ctx.clearRect(0, 0, width, height);
-
-        const canDrawSurfaceImage = surfaceImageStatus === 'loaded' && surfaceImage;
-        if (canDrawSurfaceImage) { /* ... same surface image drawing logic as Response #30 ... */ ctx.save(); ctx.beginPath(); ctx.arc(centerX, centerY, wheelRadius, 0, 2 * Math.PI, false); ctx.closePath(); ctx.clip(); const img = surfaceImage; const imgAspectRatio = img.width / img.height; const wheelDiameter = wheelRadius * 2; let scaledWidth, scaledHeight, dx, dy; if (imgAspectRatio > 1) { scaledHeight = wheelDiameter; scaledWidth = img.width * (wheelDiameter / img.height); dx = centerX - scaledWidth / 2; dy = centerY - wheelRadius; } else { scaledWidth = wheelDiameter; scaledHeight = img.height * (wheelDiameter / img.width); dx = centerX - wheelRadius; dy = centerY - scaledHeight / 2; } ctx.drawImage(img, dx, dy, scaledWidth, scaledHeight); ctx.restore(); }
-
-        if (numSegments > 0) {
-            ctx.save();
-            ctx.translate(centerX, centerY);    // Move origin to wheel center
-            ctx.rotate(currentWheelRotation); // Apply overall wheel spin
-
-            // Draw segment bases first
-            processedTextItems.forEach((processedItem) => {
-                // Need original index to calculate angles for segment base
-                const originalItemIndex = items.findIndex(it => it.id === processedItem.id);
-                if (originalItemIndex !== -1) { // Check if item still exists
-                    drawSegmentBase(ctx, processedItem, numSegments, 0, 0, wheelRadius, canDrawSurfaceImage);
-                }
-            });
-
-            // Then draw texts on top
-            processedTextItems.forEach((processedItem) => {
-                const { displayText, fontSizeToUse, finalTextColor, textLayoutProps } = processedItem;
-                if (!displayText) return; // Skip if no text to display (e.g., fully truncated)
-
-                ctx.font = fontSizeToUse;
-                ctx.fillStyle = finalTextColor;
-
-                if (textLayoutProps.type === 'horizontal-center') { // Single item case
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(displayText, 0, 0, textLayoutProps.maxWidth); // Draw at new (0,0) which is wheel center
-                } else if (textLayoutProps.type === 'radial') {
-                    ctx.save();
-                    ctx.rotate(textLayoutProps.angle); // Rotate for this specific segment's text
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(displayText, textLayoutProps.x, textLayoutProps.y, textLayoutProps.maxWidth);
-                    ctx.restore();
-                }
-            });
-            ctx.restore(); // Restore from translate and main rotation
-        } else if (wheelStatus === 'idle' && !internalIsSpinning) { /* ... same empty state message ... */ ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#6B7280'; ctx.font = `500 ${Math.max(14, wheelRadius / 15)}px ${fontFamily}`; ctx.fillText("Wheel is empty.", centerX, centerY - 10); ctx.font = `400 ${Math.max(12, wheelRadius / 20)}px ${fontFamily}`; ctx.fillText("Add items in settings.", centerX, centerY + 10); }
-
-        if (wheelStatus === 'shuffle_animating') { /* ... same shuffle animating overlay ... */ ctx.fillStyle = 'rgba(40, 48, 64, 0.6)'; ctx.fillRect(0, 0, width, height); ctx.fillStyle = 'rgba(226, 232, 240, 0.9)'; ctx.font = `600 ${Math.max(16, wheelRadius / 12)}px ${fontFamily}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Shuffling...', centerX, centerY); }
-        drawPointer(ctx, centerX, centerY, wheelRadius);
-
-    }, [items, width, height, currentWheelRotation, fontFamily, drawSegmentBase, drawPointer, internalIsSpinning, wheelStatus, surfaceImage, surfaceImageStatus, processedTextItems, segmentOpacity, pointerColor, defaultSegmentColors, overrideTextColor, overrideSegmentStrokeColor, segmentStrokeWidth]); // Added processedTextItems
-
+    // getPointerTargetAngle, drawSegmentBase, drawPointer, drawWheel, performTargetedSpin, useImperativeHandle, other useEffects
+    // These functions are identical to Response #41 and are not re-pasted for brevity.
+    // Key points: drawSegmentBase uses segmentOpacity, drawWheel uses processedTextItems and draws surfaceImage.
+    const getPointerTargetAngle = useCallback(() => { /* ... same as Response #41 ... */ switch (pointerPosition) { case 'top': return 1.5 * Math.PI; case 'bottom': return 0.5 * Math.PI; case 'left': return Math.PI; case 'right': default: return 0; } }, [pointerPosition]);
+    const drawSegmentBase = useCallback((ctx, processedItem, numSegments, centerX, centerY, radius, hasSurfaceImage) => { /* ... same as Response #41 ... */ const segmentAngle = (2 * Math.PI) / numSegments; const index = items.findIndex(it => it.id === processedItem.id); if (index === -1) return; const startAngle = index * segmentAngle; const endAngle = startAngle + segmentAngle; if (processedItem.finalSegmentColor) { ctx.fillStyle = processedItem.finalSegmentColor; if (hasSurfaceImage && items.find(it => it.id === processedItem.id)?.color) { ctx.globalAlpha = segmentOpacity; } else { ctx.globalAlpha = 1.0; } ctx.beginPath(); ctx.moveTo(centerX, centerY); ctx.arc(centerX, centerY, radius, startAngle, endAngle); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1.0; } if (segmentStrokeWidth > 0 && numSegments > 1) { const strokeColor = overrideSegmentStrokeColor || (isColorLight(processedItem.finalSegmentColor) ? DEFAULT_DARK_SEGMENT_STROKE_COLOR : DEFAULT_LIGHT_SEGMENT_STROKE_COLOR); ctx.strokeStyle = strokeColor; ctx.lineWidth = segmentStrokeWidth; ctx.beginPath(); ctx.moveTo(centerX, centerY); ctx.arc(centerX, centerY, radius, startAngle, endAngle, false); ctx.closePath(); ctx.stroke(); } }, [segmentStrokeWidth, segmentOpacity, overrideSegmentStrokeColor, items]);
+    const drawPointer = useCallback((ctx, centerX, centerY, radius) => { /* ... same as Response #41 ... */ const pointerAngle = getPointerTargetAngle(); const pointerLength = radius * 0.18; const pointerHalfWidthAtBase = radius * 0.05; ctx.fillStyle = pointerColor; ctx.beginPath(); const tipX = centerX + (radius + segmentStrokeWidth) * Math.cos(pointerAngle); const tipY = centerY + (radius + segmentStrokeWidth) * Math.sin(pointerAngle); const baseCenterX = centerX + (radius + segmentStrokeWidth + pointerLength) * Math.cos(pointerAngle); const baseCenterY = centerY + (radius + segmentStrokeWidth + pointerLength) * Math.sin(pointerAngle); const perpAngle1 = pointerAngle + Math.PI / 2; const perpAngle2 = pointerAngle - Math.PI / 2; const baseX1 = baseCenterX + pointerHalfWidthAtBase * Math.cos(perpAngle1); const baseY1 = baseCenterY + pointerHalfWidthAtBase * Math.sin(perpAngle1); const baseX2 = baseCenterX + pointerHalfWidthAtBase * Math.cos(perpAngle2); const baseY2 = baseCenterY + pointerHalfWidthAtBase * Math.sin(perpAngle2); ctx.moveTo(tipX, tipY); ctx.lineTo(baseX1, baseY1); ctx.lineTo(baseX2, baseY2); ctx.closePath(); ctx.fill(); }, [getPointerTargetAngle, pointerColor, segmentStrokeWidth]);
+    const drawWheel = useCallback(() => { /* ... same as Response #41 ... */ const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext('2d'); const numSegments = items.length; const centerX = width / 2; const centerY = height / 2; const wheelRadius = Math.min(centerX, centerY) * 0.90; ctx.clearRect(0, 0, width, height); const canDrawSurfaceImage = surfaceImageStatus === 'loaded' && surfaceImage; if (canDrawSurfaceImage) { ctx.save(); ctx.beginPath(); ctx.arc(centerX, centerY, wheelRadius, 0, 2 * Math.PI, false); ctx.closePath(); ctx.clip(); const img = surfaceImage; const imgAspectRatio = img.width / img.height; const wheelDiameter = wheelRadius * 2; let scaledWidth, scaledHeight, dx, dy; if (imgAspectRatio > 1) { scaledHeight = wheelDiameter; scaledWidth = img.width * (wheelDiameter / img.height); dx = centerX - scaledWidth / 2; dy = centerY - wheelRadius; } else { scaledWidth = wheelDiameter; scaledHeight = img.height * (wheelDiameter / img.width); dx = centerX - wheelRadius; dy = centerY - scaledHeight / 2; } ctx.drawImage(img, dx, dy, scaledWidth, scaledHeight); ctx.restore(); } if (numSegments > 0) { ctx.save(); ctx.translate(centerX, centerY); ctx.rotate(currentWheelRotation); processedTextItems.forEach((processedItem) => { const originalItemIndex = items.findIndex(it => it.id === processedItem.id); if (originalItemIndex !== -1) { drawSegmentBase(ctx, processedItem, numSegments, 0, 0, wheelRadius, canDrawSurfaceImage); } }); processedTextItems.forEach((processedItem) => { const { displayText, fontSizeToUse, finalTextColor, textLayoutProps } = processedItem; if (!displayText) return; ctx.font = fontSizeToUse; ctx.fillStyle = finalTextColor; if (textLayoutProps.type === 'horizontal-center') { ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(displayText, 0, 0, textLayoutProps.maxWidth); } else if (textLayoutProps.type === 'radial') { ctx.save(); ctx.rotate(textLayoutProps.angle); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(displayText, textLayoutProps.x, textLayoutProps.y, textLayoutProps.maxWidth); ctx.restore(); } }); ctx.restore(); } else if (wheelStatus === 'idle' && !internalIsSpinning) { ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#6B7280'; ctx.font = `500 ${Math.max(14, wheelRadius / 15)}px ${fontFamily}`; ctx.fillText("Wheel is empty.", centerX, centerY - 10); ctx.font = `400 ${Math.max(12, wheelRadius / 20)}px ${fontFamily}`; ctx.fillText("Add items in settings.", centerX, centerY + 10); } if (wheelStatus === 'shuffle_animating') { ctx.fillStyle = 'rgba(40, 48, 64, 0.6)'; ctx.fillRect(0, 0, width, height); ctx.fillStyle = 'rgba(226, 232, 240, 0.9)'; ctx.font = `600 ${Math.max(16, wheelRadius / 12)}px ${fontFamily}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Shuffling...', centerX, centerY); } drawPointer(ctx, centerX, centerY, wheelRadius); }, [items, width, height, currentWheelRotation, fontFamily, drawSegmentBase, drawPointer, internalIsSpinning, wheelStatus, surfaceImage, surfaceImageStatus, processedTextItems, segmentOpacity, pointerColor, defaultSegmentColors, overrideTextColor, overrideSegmentStrokeColor, segmentStrokeWidth]);
     useEffect(() => { drawWheel(); }, [drawWheel]);
-    useEffect(() => { /* ... normalize rotation ... */ if (wheelStatus === 'idle' && !internalIsSpinning) { setCurrentWheelRotation(prev => (prev % (2 * Math.PI) + (2 * Math.PI)) % (2 * Math.PI)); } }, [wheelStatus, internalIsSpinning]); // Removed items from dep as processedTextItems handles item changes for text
-
-    const performTargetedSpin = useCallback((targetItemToWin, minSpinsOverride, spinDurationOverride) => { /* ... same as Response #30 ... */ if (internalIsSpinning || wheelStatus !== 'spinning' || items.length === 0 || !targetItemToWin) { if (!targetItemToWin) console.error("WheelCanvas: spinToTarget called without a targetItemToWin."); else if (items.length === 0) console.error("WheelCanvas: spinToTarget called with no items on the wheel."); else if (internalIsSpinning) console.warn("WheelCanvas: spinToTarget called while already spinning."); else if (wheelStatus !== 'spinning') console.warn("WheelCanvas: spinToTarget called when wheelStatus is not 'spinning'. Current status:", wheelStatus); onSpinEnd(null, { error: "Spin conditions not met or no target." }); return; } setInternalIsSpinning(true); onSpinStart(targetItemToWin); const numSegments = items.length; const segmentAngle = (2 * Math.PI) / numSegments; const winningItemIndex = items.findIndex(item => item.id === targetItemToWin.id); if (winningItemIndex === -1) { console.error("WheelCanvas: Target item ID not found in current wheel items:", targetItemToWin.id); setInternalIsSpinning(false); onSpinEnd(null, { error: "Target item not found on wheel." }); return; } const winningSegmentCenterRelativeAngle = (winningItemIndex * segmentAngle) + (segmentAngle / 2); const pointerAbsoluteTargetAngle = getPointerTargetAngle(); let finalWheelRotation = pointerAbsoluteTargetAngle - winningSegmentCenterRelativeAngle; finalWheelRotation = (finalWheelRotation % (2 * Math.PI) + (2 * Math.PI)) % (2 * Math.PI); const normalizedCurrentRotation = (currentWheelRotation % (2 * Math.PI) + (2 * Math.PI)) % (2 * Math.PI); let rotationDelta = (finalWheelRotation - normalizedCurrentRotation + (2 * Math.PI)) % (2 * Math.PI); const actualMinSpins = minSpinsOverride !== undefined ? minSpinsOverride : minSpins; const actualSpinDuration = spinDurationOverride !== undefined ? spinDurationOverride : spinDuration; const targetAnimationAngle = currentWheelRotation + rotationDelta + (actualMinSpins * 2 * Math.PI); const animationStartTime = performance.now(); const initialRotationForAnimation = currentWheelRotation; const performAnimationFrame = () => { const elapsedTime = performance.now() - animationStartTime; let progress = Math.min(elapsedTime / actualSpinDuration, 1); if (progress > 1) progress = 1; const easedProgress = easeOutCubic(progress); setCurrentWheelRotation(initialRotationForAnimation + (targetAnimationAngle - initialRotationForAnimation) * easedProgress); if (progress < 1) { animationFrameIdRef.current = requestAnimationFrame(performAnimationFrame); } else { setCurrentWheelRotation(finalWheelRotation); setInternalIsSpinning(false); animationFrameIdRef.current = null; onSpinEnd(targetItemToWin, null); } }; animationFrameIdRef.current = requestAnimationFrame(performAnimationFrame); }, [items, internalIsSpinning, wheelStatus, currentWheelRotation, getPointerTargetAngle, onSpinStart, onSpinEnd, minSpins, spinDuration]);
-    useImperativeHandle(ref, () => ({ /* ... same, only spinToTarget ... */ spinToTarget: (targetItem, minSpinsOverride, spinDurationOverride) => { performTargetedSpin(targetItem, minSpinsOverride, spinDurationOverride); } }), [performTargetedSpin]);
-    useEffect(() => { /* ... same cleanup ... */ return () => { if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current); }; }, []);
+    useEffect(() => { if (wheelStatus === 'idle' && !internalIsSpinning) { setCurrentWheelRotation(prev => (prev % (2 * Math.PI) + (2 * Math.PI)) % (2 * Math.PI)); } }, [wheelStatus, internalIsSpinning]);
+    const performTargetedSpin = useCallback((targetItemToWin, minSpinsOverride, spinDurationOverride) => { if (internalIsSpinning || wheelStatus !== 'spinning' || items.length === 0 || !targetItemToWin) { if (!targetItemToWin) console.error("WheelCanvas: spinToTarget called without a targetItemToWin."); else if (items.length === 0) console.error("WheelCanvas: spinToTarget called with no items on the wheel."); else if (internalIsSpinning) console.warn("WheelCanvas: spinToTarget called while already spinning."); else if (wheelStatus !== 'spinning') console.warn("WheelCanvas: spinToTarget called when wheelStatus is not 'spinning'. Current status:", wheelStatus); onSpinEnd(null, { error: "Spin conditions not met or no target." }); return; } setInternalIsSpinning(true); onSpinStart(targetItemToWin); const numSegments = items.length; const segmentAngle = (2 * Math.PI) / numSegments; const winningItemIndex = items.findIndex(item => item.id === targetItemToWin.id); if (winningItemIndex === -1) { console.error("WheelCanvas: Target item ID not found in current wheel items:", targetItemToWin.id); setInternalIsSpinning(false); onSpinEnd(null, { error: "Target item not found on wheel." }); return; } const winningSegmentCenterRelativeAngle = (winningItemIndex * segmentAngle) + (segmentAngle / 2); const pointerAbsoluteTargetAngle = getPointerTargetAngle(); let finalWheelRotation = pointerAbsoluteTargetAngle - winningSegmentCenterRelativeAngle; finalWheelRotation = (finalWheelRotation % (2 * Math.PI) + (2 * Math.PI)) % (2 * Math.PI); const normalizedCurrentRotation = (currentWheelRotation % (2 * Math.PI) + (2 * Math.PI)) % (2 * Math.PI); let rotationDelta = (finalWheelRotation - normalizedCurrentRotation + (2 * Math.PI)) % (2 * Math.PI); const actualMinSpins = minSpinsOverride !== undefined ? minSpinsOverride : minSpins; const actualSpinDuration = spinDurationOverride !== undefined ? spinDurationOverride : spinDuration; const targetAnimationAngle = currentWheelRotation + rotationDelta + (actualMinSpins * 2 * Math.PI); const animationStartTime = performance.now(); const initialRotationForAnimation = currentWheelRotation; const performAnimationFrame = () => { const elapsedTime = performance.now() - animationStartTime; let progress = Math.min(elapsedTime / actualSpinDuration, 1); if (progress > 1) progress = 1; const easedProgress = easeOutCubic(progress); setCurrentWheelRotation(initialRotationForAnimation + (targetAnimationAngle - initialRotationForAnimation) * easedProgress); if (progress < 1) { animationFrameIdRef.current = requestAnimationFrame(performAnimationFrame); } else { setCurrentWheelRotation(finalWheelRotation); setInternalIsSpinning(false); animationFrameIdRef.current = null; onSpinEnd(targetItemToWin, null); } }; animationFrameIdRef.current = requestAnimationFrame(performAnimationFrame); }, [items, internalIsSpinning, wheelStatus, currentWheelRotation, getPointerTargetAngle, onSpinStart, onSpinEnd, minSpins, spinDuration]);
+    useImperativeHandle(ref, () => ({ spinToTarget: (targetItem, minSpinsOverride, spinDurationOverride) => { performTargetedSpin(targetItem, minSpinsOverride, spinDurationOverride); } }), [performTargetedSpin]);
+    useEffect(() => { return () => { if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current); }; }, []);
 
     const canBeClicked = wheelStatus === 'idle' && items.length > 0;
-    return ( /* ... same canvas JSX ... */ <canvas ref={canvasRef} width={width} height={height} onClick={canBeClicked ? onWheelClick : undefined} className={`wheel-canvas ${canvasClassName} rounded-full ${canBeClicked ? 'cursor-pointer hover:opacity-90 active:opacity-80' : 'cursor-default'} transition-opacity duration-150 ease-in-out`} role={canBeClicked ? "button" : undefined} tabIndex={canBeClicked ? 0 : -1} aria-label={canBeClicked ? "Spin the wheel" : "Wheel is busy or empty"} /> );
+    return ( <canvas ref={canvasRef} width={width} height={height} onClick={canBeClicked ? onWheelClick : undefined} className={`wheel-canvas ${canvasClassName} rounded-full ${canBeClicked ? 'cursor-pointer hover:opacity-90 active:opacity-80' : 'cursor-default'} transition-opacity duration-150 ease-in-out`} role={canBeClicked ? "button" : undefined} tabIndex={canBeClicked ? 0 : -1} aria-label={canBeClicked ? "Spin the wheel" : "Wheel is busy or empty"} /> );
 });
 
-WheelCanvas.propTypes = { /* ... same as Response #30, ensure segmentOpacity is included ... */
+WheelCanvas.propTypes = { /* ... same as Response #41 ... */
     items: PropTypes.arrayOf(PropTypes.shape({ id: PropTypes.string.isRequired, name: PropTypes.string.isRequired, color: PropTypes.string, sourceGroup: PropTypes.string, })).isRequired,
     pointerPosition: PropTypes.oneOf(['top', 'right', 'bottom', 'left']),
     onSpinStart: PropTypes.func, onSpinEnd: PropTypes.func, onWheelClick: PropTypes.func,
