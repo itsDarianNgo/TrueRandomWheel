@@ -10,7 +10,7 @@ import {
 } from './WheelSlice.js';
 
 import WheelCanvasContainer from '../wheel/WheelCanvasContainer';
-import SettingsPanelOrchestrator from './SettingsPanelOrchestrator';
+import SettingsPanelOrchestrator from '../layout/SettingsPanelOrchestrator';
 import Modal from '../../components/common/Modal';
 
 // --- ICON DEFINITIONS --- Ensure these are present and correct ---
