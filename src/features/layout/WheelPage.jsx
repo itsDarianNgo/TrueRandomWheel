@@ -7,7 +7,7 @@ import {
     selectWheelStatus, selectWinningItemDetails, selectDisplayWinningBanner,
     confirmWinningSpinThunk, voidLastSpinThunk, performShuffleThunk,
     selectPageBackgroundImageUrl, selectRemoveOnHit
-} from '../wheel/wheelSlice';
+} from '../wheel/WheelSlice';
 import WheelCanvasContainer from '../wheel/WheelCanvasContainer';
 import SettingsPanelOrchestrator from './SettingsPanelOrchestrator';
 import Modal from '../../components/common/Modal';
