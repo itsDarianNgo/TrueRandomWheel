@@ -2,90 +2,74 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useSelector, useDispatch } from 'react-redux';
-import WheelCanvas from './WheelCanvas'; // The presentational component
+import WheelCanvas from './WheelCanvas';
 import { spinWheelThunk, finalizeSpinThunk } from './WheelSlice.js';
 import { selectAllItems } from '../items/itemSlice';
 import {
-    selectWheelSettings,
+    selectWheelSettings, // General operational settings
     selectWheelStatus,
     selectTargetWinningItem,
     selectWheelSurfaceImageUrl,
-    selectSegmentOpacity // New
+    selectSegmentOpacity,
+    selectPointerPosition, // For passing to WheelCanvas -> pointerDrawer
+    selectCustomPointerColor // ***** NEW IMPORT *****
 } from './WheelSlice.js';
 
 const WheelCanvasContainer = ({ width, height, canvasClassName }) => {
     const dispatch = useDispatch();
     const wheelCanvasRef = useRef(null);
 
-    // Select necessary state from Redux
     const items = useSelector(selectAllItems);
-    const wheelSettings = useSelector(selectWheelSettings);
+    const wheelOpSettings = useSelector(selectWheelSettings); // Contains minSpins, spinDuration etc.
     const wheelStatus = useSelector(selectWheelStatus);
     const targetWinningItem = useSelector(selectTargetWinningItem);
     const wheelSurfaceImageUrl = useSelector(selectWheelSurfaceImageUrl);
-    const segmentOpacity = useSelector(selectSegmentOpacity); // New
+    const segmentOpacity = useSelector(selectSegmentOpacity);
+    const currentPointerPosition = useSelector(selectPointerPosition); // Get current pointer position
+    const customPointerColor = useSelector(selectCustomPointerColor); // ***** GET CUSTOM POINTER COLOR *****
 
 
-    // Effect to trigger spin animation when status and target are ready
     useEffect(() => {
         if (wheelStatus === 'spinning' && targetWinningItem && wheelCanvasRef.current?.spinToTarget) {
             wheelCanvasRef.current.spinToTarget(
                 targetWinningItem,
-                wheelSettings.minSpins,
-                wheelSettings.spinDuration
+                wheelOpSettings.minSpins,      // From wheelOpSettings
+                wheelOpSettings.spinDuration   // From wheelOpSettings
             );
         }
-    }, [wheelStatus, targetWinningItem, wheelSettings.minSpins, wheelSettings.spinDuration]);
+    }, [wheelStatus, targetWinningItem, wheelOpSettings.minSpins, wheelOpSettings.spinDuration]);
 
-    // Callbacks to pass to WheelCanvas
-    const handleWheelClick = useCallback(() => {
-        if (wheelStatus === 'idle' && items.length > 0) {
-            dispatch(spinWheelThunk());
-        }
-    }, [dispatch, wheelStatus, items.length]);
-
-    const handleSpinStart = useCallback((_itemBeingSpunTo) => {
-        // Optional: dispatch an action if specific tracking of canvas animation start is needed
-        // console.log("[WheelCanvasContainer] WheelCanvas reported spin animation started for:", _itemBeingSpunTo.name);
-    }, []);
-
-    const handleSpinEnd = useCallback((landedItem, errorInfo) => {
-        dispatch(finalizeSpinThunk({ confirmedLandedItem: landedItem, errorInfo }));
-    }, [dispatch]);
+    const handleWheelClick = useCallback(() => { /* ... unchanged ... */ if (wheelStatus === 'idle' && items.length > 0) { dispatch(spinWheelThunk()); } }, [dispatch, wheelStatus, items.length]);
+    const handleSpinStart = useCallback((_itemBeingSpunTo) => { /* ... unchanged ... */ }, []);
+    const handleSpinEnd = useCallback((landedItem, errorInfo) => { dispatch(finalizeSpinThunk({ confirmedLandedItem: landedItem, errorInfo })); }, [dispatch]);
 
     return (
         <WheelCanvas
             ref={wheelCanvasRef}
             items={items}
-            pointerPosition={wheelSettings.pointerPosition}
-            minSpins={wheelSettings.minSpins}
-            spinDuration={wheelSettings.spinDuration}
+            // Pass operational settings from wheelOpSettings
+            minSpins={wheelOpSettings.minSpins}
+            spinDuration={wheelOpSettings.spinDuration}
+
+            // Pass direct visual/state props
+            pointerPosition={currentPointerPosition} // Pass selected pointerPosition
+            pointerColor={customPointerColor} // ***** PASS CUSTOM COLOR AS pointerColor PROP *****
             wheelSurfaceImageUrl={wheelSurfaceImageUrl}
-            segmentOpacity={segmentOpacity} // Pass new prop
+            segmentOpacity={segmentOpacity}
+            wheelStatus={wheelStatus}
 
             onWheelClick={handleWheelClick}
             onSpinStart={handleSpinStart}
             onSpinEnd={handleSpinEnd}
 
-            wheelStatus={wheelStatus}
             width={width}
             height={height}
             canvasClassName={canvasClassName}
-            // Other visual props from parent/store as needed
-            fontFamily={wheelSettings.fontFamily || undefined} // Example if fontFamily becomes a setting
-            pointerColor={wheelSettings.pointerColor || undefined} // Example
+            // fontFamily can be added to wheelSettings if made configurable later
         />
     );
 };
 
-WheelCanvasContainer.propTypes = {
-    width: PropTypes.number.isRequired,
-    height: PropTypes.number.isRequired,
-    canvasClassName: PropTypes.string,
-};
-
-WheelCanvasContainer.defaultProps = {
-    canvasClassName: '',
-};
-
+WheelCanvasContainer.propTypes = { /* ... unchanged ... */ width: PropTypes.number.isRequired, height: PropTypes.number.isRequired, canvasClassName: PropTypes.string };
+WheelCanvasContainer.defaultProps = { canvasClassName: '' };
 export default WheelCanvasContainer;
